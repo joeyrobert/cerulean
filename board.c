@@ -32,7 +32,7 @@ void board_new() {
 
 void board_set_fen(char* fen) {
     board_new();
-    unsigned row = 7, column = 0, colour, skip = 0;
+    unsigned row = 7, column = 0, colour, skip = 0, iter;
 
     /* Board and piece lists */
     while(*fen != ' ') {
@@ -92,6 +92,22 @@ void board_set_fen(char* fen) {
     /* Fullmove number */
     while(*fen != ' ') fen++; fen++;
     full_move_number = atoi(fen);
+
+    /* King positions */
+    iter = 0;
+    for(iter = 0; iter < w_pieces.count; iter++) {
+        if(pieces[w_pieces.index[iter]] == KING) {
+            w_king = w_pieces.index[iter];
+            break;
+        }
+    } 
+
+    for(iter = 0; iter < b_pieces.count; iter++) {
+        if(pieces[b_pieces.index[iter]] == KING) {
+            b_king = b_pieces.index[iter];
+            break;
+        }
+    } 
 }
 
 
@@ -146,6 +162,7 @@ void board_draw() {
     printf("En Passant Target: %u (%s)\n", en_passant_target, ep);
     printf("Half move number:  %u\n", half_move_clock);
     printf("Full move number:  %u\n", full_move_number);
+    printf("W King: %u, B King: %u \n", w_king, b_king);
 
     int i;
     printf("White pieces: ");
@@ -194,6 +211,7 @@ unsigned gen_moves(unsigned* moves) {
                break;
         }
     }
+    //gen_castle(&count, list->index[i], moves); 
     return count;
 }
 
@@ -223,7 +241,7 @@ void gen_pawn(unsigned *count, unsigned i, unsigned* moves) {
     int iter;
     for(iter = -1; iter <= 1; iter += 2) {
         /* captures */
-        new_move = i + turn*16 + 1;
+        new_move = i + turn*16 + iter;
         if((new_move & 0x88) != 0 || new_move > 119) continue;
 
         if(colours[new_move] == -1 * turn) {
@@ -396,31 +414,23 @@ unsigned board_add(unsigned move) {
     if(pieces[to] == KING) {
         switch(turn) {
             case WHITE:
-                if(castling & CASTLE_WQ)
-                    castling -= CASTLE_WQ;
-                if(castling & CASTLE_WK)
-                    castling -= CASTLE_WK;
+                if(castling & CASTLE_WQ) castling -= CASTLE_WQ;
+                if(castling & CASTLE_WK) castling -= CASTLE_WK;
                 w_king = to;
                 break;
             case BLACK:
-                if(castling & CASTLE_BQ)
-                    castling -= CASTLE_BQ;
-                if(castling & CASTLE_BK)
-                    castling -= CASTLE_BK;
+                if(castling & CASTLE_BQ) castling -= CASTLE_BQ;
+                if(castling & CASTLE_BK) castling -= CASTLE_BK;
                 b_king = to;
                 break;
         }
     }
 
     /* Remove castling rights */
-    if((from == 7 || to == 7) && castling & CASTLE_WK)
-        castling -= CASTLE_WK;
-    if((from == 0 || to == 0) && castling & CASTLE_WQ)
-        castling -= CASTLE_WQ;
-    if((from == 119 || to == 119) && castling & CASTLE_BK)
-        castling -= CASTLE_BK;
-    if((from == 112 || to == 112) && castling & CASTLE_BQ)
-        castling -= CASTLE_BQ;
+    if((from == 7 || to == 7) && (castling & CASTLE_WK))     castling -= CASTLE_WK;
+    if((from == 0 || to == 0) && (castling & CASTLE_WQ))     castling -= CASTLE_WQ;
+    if((from == 119 || to == 119) && (castling & CASTLE_BK)) castling -= CASTLE_BK;
+    if((from == 112 || to == 112) && (castling & CASTLE_BQ)) castling -= CASTLE_BQ;
 
     if(turn == BLACK) full_move_number++;
     turn = -1 * turn;
@@ -501,7 +511,7 @@ void board_subtract() {
     if((bits & BITS_PROMOTE) != 0)
         pieces[from] = PAWN;
 
-    if(pieces[to] == KING) {
+    if(pieces[from] == KING) {
         if(colours[from] == WHITE)
             w_king = from;
         else
@@ -510,11 +520,12 @@ void board_subtract() {
 }
 
 void move_piece(unsigned from, unsigned to, piece_list* list) {
-    unsigned list_index = list->reverse[from];
-    list->reverse[to] = list_index;
-    list->index[list_index] = to;
-    pieces[to] = pieces[from]; colours[to] = colours[from];
-    pieces[from] = EMPTY; colours[from] = EMPTY;
+    list->reverse[to] = list->reverse[from];
+    list->index[list->reverse[to]] = to;
+    pieces[to] = pieces[from];
+    colours[to] = colours[from];
+    pieces[from] = EMPTY;
+    colours[from] = EMPTY;
 }
 
 unsigned is_attacked(unsigned i, int by) {
@@ -524,12 +535,13 @@ unsigned is_attacked(unsigned i, int by) {
     for(iter = 0; iter < 4; iter++) {
         new_move = delta_diagonal[iter] + i;
         while(1) {
-            if((new_move & 0x88) || new_move > 119) break;
+            if(!LEGAL_MOVE(new_move)) break;
             if(colours[new_move] == EMPTY)
                 new_move += delta_diagonal[iter];
-            else if((pieces[new_move] == BISHOP || pieces[new_move] == QUEEN) && colours[new_move] == by)
+            else if((pieces[new_move] == BISHOP || pieces[new_move] == QUEEN) && colours[new_move] == by) {
+ //               printf("FUCK DIAGONAL %u => %u\n", i, new_move);
                 return 1;
-            else
+            } else
                 break;
         }
     }
@@ -538,12 +550,13 @@ unsigned is_attacked(unsigned i, int by) {
     for(iter = 0; iter < 4; iter++) {
         new_move = delta_vertical[iter] + i;
         while(1) {
-            if((new_move & 0x88) || new_move > 119) break;
+            if(!LEGAL_MOVE(new_move)) break;
             if(colours[new_move] == EMPTY)
-                new_move += delta_diagonal[iter];
-            else if((pieces[new_move] == ROOK || pieces[new_move] == QUEEN) && colours[new_move] == by)
+                new_move += delta_vertical[iter];
+            else if((pieces[new_move] == ROOK || pieces[new_move] == QUEEN) && colours[new_move] == by) {
+       //         printf("FUCK VERTICAL %u => %u\n", i, new_move);
                 return 1;
-            else
+            } else
                 break;
         }
     }
@@ -551,27 +564,36 @@ unsigned is_attacked(unsigned i, int by) {
     /* Knight */
     for(iter = 0; iter < 8; iter++) {
         new_move = delta_knight[iter] + i;
-        if((new_move & 0x88) || new_move > 119) continue;
-        if(colours[new_move] == by && pieces[new_move] == KNIGHT)
+        if(LEGAL_MOVE(new_move) && colours[new_move] == by && pieces[new_move] == KNIGHT) {
+     //       printf("by: %i, colours[new_move]: %i, pieces[new_move]: %u\n", by, colours[new_move], pieces[new_move]);
+     //       printf("by: %i, colours[i]: %i, pieces[i]: %u\n", by, colours[i], pieces[i]);
+     //       printf("FUCK KNIGHT %u => %u\n", i, new_move);
+     //       board_draw();
             return 1;
+        }
     }
 
     /* King */
     for(iter = 0; iter < 8; iter++) {
         new_move = delta_king[iter] + i;
-        if((new_move & 0x88) || new_move > 119) continue;
-        if(colours[new_move] == by && pieces[new_move] == KING)
+        if(LEGAL_MOVE(new_move) && colours[new_move] == by && pieces[new_move] == KING) {
+   //         printf("FUCK KING %u => %u\n", i, new_move);
             return 1;
+        }
     }
 
     /* Pawns */
-    new_move = i + (9 * by) * -1;
-    if (!((new_move & 0x88) || new_move > 119) && colours[new_move] == by && pieces[new_move] == PAWN)
+    new_move = i + (15 * by) * -1;
+    if (LEGAL_MOVE(new_move) && colours[new_move] == by && pieces[new_move] == PAWN) {
+ //       printf("FUCK PAWN %u => %u\n", i, new_move);
         return 1;
+    }
 
-    new_move = i + (11 * by) * -1;
-    if (!((new_move & 0x88) || new_move > 119) && colours[new_move] == by && pieces[new_move] == PAWN)
+    new_move = i + (17 * by) * -1;
+    if (LEGAL_MOVE(new_move) && colours[new_move] == by && pieces[new_move] == PAWN) {
+    //    printf("FUCK PAWN %u => %u\n", i, new_move);
         return 1;
+    }
 
     return 0;
 }

@@ -27,9 +27,10 @@
 #define ROWCOLUMN2INDEX(row, column)  (row * 16 + column)
 #define INDEX2ROW(index)              (index >> 4)
 #define INDEX2COLUMN(index)           (index & 7)
+#define LEGAL_MOVE(move)              ((move & 0x88) == 0 && move < 120)
 
 unsigned pieces[128];
-unsigned colours[128];
+int colours[128];
 unsigned w_king, b_king; /* saves lookup time in check methods */
 piece_list w_pieces, b_pieces;
 

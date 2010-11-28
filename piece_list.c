@@ -1,7 +1,7 @@
 #include "piece_list.h"
 
 /*
-  Piece list methods. See Mediocre for inspiration.
+  Piece list methods.
 
   Method to using a piece list:
     - They can be iterated over to yield the index of each piece.
