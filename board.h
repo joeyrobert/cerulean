@@ -31,8 +31,8 @@
 
 unsigned pieces[128];
 int colours[128];
-unsigned w_king, b_king; /* saves lookup time in check methods */
 piece_list w_pieces, b_pieces;
+unsigned w_king, b_king; /* saves lookup time in check methods */
 
 int turn;
 unsigned castling;
@@ -45,18 +45,8 @@ unsigned total_history;
 void board_new();
 void board_draw();
 void board_set_fen(char*);
-void board_debug(char*);
 unsigned board_add(unsigned);
 void board_subtract();
 unsigned gen_moves(unsigned*);
-void gen_pawn(unsigned*, unsigned, unsigned*);
-void gen_knight(unsigned*, unsigned, unsigned*);
-void gen_king(unsigned*, unsigned, unsigned*);
-void gen_bishop(unsigned*, unsigned, unsigned*);
-void gen_rook(unsigned*, unsigned, unsigned*);
-void gen_promotions(unsigned*, unsigned*, unsigned, unsigned, unsigned);
-void move_piece(unsigned, unsigned, piece_list*);
-unsigned is_in_check(int);
-unsigned is_attacked(unsigned, int);
 
 #endif
