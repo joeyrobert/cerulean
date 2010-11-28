@@ -4,3 +4,14 @@
 *.swp
 cerulean
 *.ods#
+*.exe
+*.dll
+*.user
+*.suo
+Debug/
+Release/
+ipch/
+*.DS_Store
+Thumbs.db
+*.sdf
+*.opensdf

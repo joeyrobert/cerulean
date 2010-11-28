@@ -5,7 +5,7 @@
 
 #define WHITE        1
 #define BLACK        -1
-#define NO_EN_PASSANT  137
+#define NO_ENPASSANT  137
 #define OFF          137 /* used in reverse list */
 #define EMPTY        0
 
@@ -36,7 +36,7 @@ unsigned w_king, b_king; /* saves lookup time in check methods */
 
 int turn;
 unsigned castling;
-unsigned en_passant_target;
+unsigned enpassant_target;
 unsigned half_move_clock;
 unsigned full_move_number;
 unsigned history[1024][4];

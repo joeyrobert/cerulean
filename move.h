@@ -23,7 +23,7 @@ The PROMOTE property is equal to the piece (QUEEN, ROOK, BISHOP, KNIGHT).
 
 #define BITS_CAPTURE       0x01000000
 #define BITS_CASTLE        0x02000000
-#define BITS_EN_PASSANT    0x04000000
+#define BITS_ENPASSANT     0x04000000
 #define BITS_PAWN_DOUBLE   0x08000000
 #define BITS_PAWN_MOVE     0x10000000
 #define BITS_PROMOTE       0x20000000
@@ -38,6 +38,6 @@ The PROMOTE property is equal to the piece (QUEEN, ROOK, BISHOP, KNIGHT).
 #define MOVE2PROMOTE(move) ((move & MOVE_PROMOTE) >> 16)
 #define MOVE2BITS(move)    (move & MOVE_BITS)
 
-#define MOVE_NEW(bits, promote, from, to) ((bits) | (promote << 16) | (from << 8) | (to))
+#define MOVE_NEW(from, to, bits, promote) ((bits) | (promote << 16) | (from << 8) | (to))
 
 #endif

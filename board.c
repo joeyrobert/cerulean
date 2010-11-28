@@ -18,7 +18,7 @@ void board_new() {
     memset(colours, EMPTY, 128);
     turn = WHITE;
     castling = 0;
-    en_passant_target = NO_EN_PASSANT;
+    enpassant_target = NO_ENPASSANT;
     half_move_clock = 0, full_move_number = 1;
     memset(history, EMPTY, 1024 * 4);
     total_history = 0;
@@ -26,19 +26,20 @@ void board_new() {
     /* piece list structure */
     w_king = EMPTY;
     b_king = EMPTY;
-    memset(&w_pieces, EMPTY, 145*sizeof(unsigned));
-    memset(&b_pieces, EMPTY, 145*sizeof(unsigned));
+    piece_list_new(&w_pieces);
+    piece_list_new(&b_pieces);
 }
 
 void board_set_fen(char* fen) {
+    unsigned row, column, colour, skip, iter, number;
     board_new();
-    unsigned row = 7, column = 0, colour, skip = 0, iter;
+	row = 7; column = 0; skip = 0;
 
     /* Board and piece lists */
     while(*fen != ' ') {
         if(*fen == '/') { row--; fen++; column = 0; skip = 0; continue;  }
         if(skip > 0) { skip--; fen++; column = (column + 1) % 8; continue; }
-        int number = *fen - '0';
+        number = *fen - '0';
         if(number > 0 && number <= 8) { skip = number - 1; fen++; column = (column + 1) % 8; continue; }
 
         if (*fen == tolower(*fen)) {
@@ -82,7 +83,7 @@ void board_set_fen(char* fen) {
     fen++;
     if(*fen != '-') {
         char ep[2]; ep[0] = *fen; fen++; ep[1] = *fen;
-        en_passant_target = piece_to_index(ep);
+        enpassant_target = piece_to_index(ep);
     }
 
     /* Halfmove clock */
@@ -112,6 +113,9 @@ void board_set_fen(char* fen) {
 
 void board_draw() {
     int row, column;
+    unsigned i;
+	char ep[3];
+
     printf("\n  +-------------------------------+\n");
     for(row = 7; row >= 0; row--) {
         printf("%d |", row + 1);
@@ -126,16 +130,14 @@ void board_draw() {
     }
     printf("    A   B   C   D   E   F   G   H \n\n");
 
-    char ep[3];
-    index_to_piece(en_passant_target, ep);
+    index_to_piece(enpassant_target, ep);
     printf("Turn:              %i\n", turn);
     printf("Castling:          0x%X\n", castling);
-    printf("En Passant Target: %u (%s)\n", en_passant_target, ep);
+    printf("En Passant Target: %u (%s)\n", enpassant_target, ep);
     printf("Half move number:  %u\n", half_move_clock);
     printf("Full move number:  %u\n", full_move_number);
     printf("W King: %u, B King: %u \n", w_king, b_king);
 
-    int i;
     printf("White pieces: ");
     for(i = 0; i < w_pieces.count; i++) {
         if(w_pieces.index[i] != OFF) {
@@ -156,11 +158,161 @@ void board_draw() {
 }
 
 unsigned gen_moves(unsigned* moves) {
+    piece_list *list;
+    unsigned i, j, index, count, new_move, last_row, first_row;
 
+    switch(turn) {
+    case WHITE:
+        list = &w_pieces;
+        last_row = 7;
+        first_row = 1;
+        break;
+    case BLACK:
+        list = &b_pieces;
+        last_row = 0;
+        first_row = 6;
+        break;
+    }
+
+    count = 0;
+    for(i = 0; i < list->count; i++) {
+        index = list->index[i];
+        switch(pieces[index]) {
+        case PAWN:
+            /* Regular push */
+            new_move = index + 16*turn;
+            if(LEGAL_MOVE(new_move) && pieces[new_move] == EMPTY) {
+                if(INDEX2ROW(new_move) == last_row) {
+                    moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_PROMOTE, QUEEN);
+                    moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_PROMOTE, ROOK);
+                    moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_PROMOTE, BISHOP);
+                    moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_PROMOTE, KNIGHT);
+                } else {
+                    moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE, 0);
+                }
+            }
+            
+            /* Double push */
+            new_move = index + 32*turn;
+            if(LEGAL_MOVE(new_move) && pieces[index+16*turn] == EMPTY && pieces[new_move] == EMPTY && INDEX2ROW(index) == first_row)
+                moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_PAWN_DOUBLE, 0);
+
+            for(j = 0; j <= 2; j = j+2) {                
+                /* Captures */
+                new_move = index + (16 + j - 1)*turn;
+                if(LEGAL_MOVE(new_move) && colours[new_move] == -turn) {
+                    if(INDEX2ROW(new_move) == last_row) {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_CAPTURE | BITS_PROMOTE, QUEEN);
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_CAPTURE | BITS_PROMOTE, ROOK);
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_CAPTURE | BITS_PROMOTE, BISHOP);
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_CAPTURE | BITS_PROMOTE, KNIGHT);
+                    } else {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_CAPTURE, 0);
+                    }
+                }
+
+                /* En passant */
+                if(LEGAL_MOVE(new_move) && new_move == enpassant_target) {
+                    moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_ENPASSANT | BITS_CAPTURE, 0);
+                }
+            }
+            break;
+        case KNIGHT:
+            for(j = 0; j < 8; j++) {
+                new_move = index + delta_knight[j];
+                if(LEGAL_MOVE(new_move) && colours[new_move] != turn) {
+                    if(colours[new_move] == -turn)
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                    else
+                        moves[count++] = MOVE_NEW(index, new_move, 0, 0);
+                }
+            }
+            break;
+        case KING:
+            for(j = 0; j < 8; j++) {
+                new_move = index + delta_king[j];
+                if(LEGAL_MOVE(new_move) && colours[new_move] != turn) {
+                    if(colours[new_move] == -turn)
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                    else
+                        moves[count++] = MOVE_NEW(index, new_move, 0, 0);
+                }
+            }
+            break;
+        case BISHOP:
+            for(j = 0; j < 4; j++) {
+                new_move = index;
+
+                do {
+                    new_move += delta_diagonal[j];
+                    if(!LEGAL_MOVE(new_move) || colours[new_move] == turn) break;
+
+                    if(pieces[new_move] == EMPTY) {
+                        moves[count++] = MOVE_NEW(index, new_move, 0, 0);                        
+                    } else if(colours[new_move] == -turn) {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                        break;
+                    }
+                } while(1);
+            }
+            break;
+        case ROOK:
+            for(j = 0; j < 4; j++) {
+                new_move = index;
+
+                do {
+                    new_move += delta_vertical[j];
+                    if(!LEGAL_MOVE(new_move) || colours[new_move] == turn) break;
+
+                    if(pieces[new_move] == EMPTY) {
+                        moves[count++] = MOVE_NEW(index, new_move, 0, 0);                        
+                    } else if(colours[new_move] == -turn) {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                        break;
+                    }
+                } while(1);
+            }
+            break;
+        case QUEEN:
+            for(j = 0; j < 4; j++) {
+                new_move = index;
+                do {
+                    new_move += delta_diagonal[j];
+                    if(!LEGAL_MOVE(new_move) || colours[new_move] == turn) break;
+
+                    if(pieces[new_move] == EMPTY) {
+                        moves[count++] = MOVE_NEW(index, new_move, 0, 0);                        
+                    } else if(colours[new_move] == -turn) {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                        break;
+                    }
+                } while(1);
+                
+                new_move = index;
+                do {
+                    new_move += delta_vertical[j];
+                    if(!LEGAL_MOVE(new_move) || colours[new_move] == turn) break;
+
+                    if(pieces[new_move] == EMPTY) {
+                        moves[count++] = MOVE_NEW(index, new_move, 0, 0);                        
+                    } else if(colours[new_move] == -turn) {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                        break;
+                    }
+                } while(1);
+            }
+            break;
+        }
+    }
+
+    /* TODO: Castling */
+
+    return count;
 }
 
 /* updates board and board list */
 unsigned board_add(unsigned move) {
+    return 0;
 }
 
 void board_subtract() {

@@ -8,6 +8,7 @@ typedef struct {
   unsigned reverse[128]; /* board_index => piece */
 } piece_list;
 
+void piece_list_new(piece_list*);
 void piece_list_add(piece_list*, unsigned);
 void piece_list_subtract(piece_list*, unsigned);
 

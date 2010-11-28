@@ -50,7 +50,7 @@ void move_to_string(unsigned move, char* str) {
 }
 
 void describe_moves(unsigned *moves, unsigned move_count) {
-  int i; char str[5];
+  unsigned i; char str[5];
   for(i = 0; i < move_count; i++) {
       move_to_string(moves[i], str);
       printf("%s, ", str);
