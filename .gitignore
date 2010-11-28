@@ -1,4 +1,5 @@
 *.pgn
 *.json
 *.o
+*.swp
 cerulean

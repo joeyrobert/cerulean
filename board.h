@@ -30,8 +30,6 @@
 
 unsigned pieces[128];
 unsigned colours[128];
-
-unsigned reverse[128];   /* links index to piece_list */
 unsigned w_king, b_king; /* saves lookup time in check methods */
 piece_list w_pieces, b_pieces;
 
@@ -49,11 +47,6 @@ void board_set_fen(char*);
 void board_debug(char*);
 unsigned board_add(unsigned);
 void board_subtract();
-unsigned board_add(unsigned);
-void index_to_piece(unsigned, char*);
-void move_to_string(unsigned, char*);
-unsigned piece_to_index(char*);
-unsigned piece_name_to_value(char);
 unsigned gen_moves(unsigned*);
 void gen_pawn(unsigned*, unsigned, unsigned*);
 void gen_knight(unsigned*, unsigned, unsigned*);
@@ -62,8 +55,6 @@ void gen_bishop(unsigned*, unsigned, unsigned*);
 void gen_rook(unsigned*, unsigned, unsigned*);
 void gen_promotions(unsigned*, unsigned*, unsigned, unsigned, unsigned);
 void move_piece(unsigned, unsigned, piece_list*);
-void describe_moves(unsigned *, unsigned);
-char piece_value_to_name(unsigned);
 unsigned is_in_check(int);
 unsigned is_attacked(unsigned, int);
 

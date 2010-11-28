@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "board.h"
+#include "util.h"
 
 unsigned long long engine_perft(int depth) {
     if(depth == 0) return 1;
