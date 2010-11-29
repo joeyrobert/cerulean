@@ -29,8 +29,8 @@ void piece_list_subtract(piece_list* list, unsigned index) {
         loc = list->reverse[index];
         list->count -= 1;
         list->index[loc] = list->index[list->count];
-        list->index[list->count] = EMPTY;
         list->reverse[list->index[loc]] = loc;
+        list->index[list->count] = EMPTY;
         list->reverse[index] = EMPTY;
     }
 }

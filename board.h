@@ -48,5 +48,8 @@ void board_set_fen(char*);
 unsigned board_add(unsigned);
 void board_subtract();
 unsigned gen_moves(unsigned*);
+void move_piece(unsigned, unsigned, piece_list*);
+unsigned is_in_check(int);
+unsigned is_attacked(unsigned, int);
 
 #endif
