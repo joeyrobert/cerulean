@@ -51,5 +51,6 @@ unsigned gen_moves(unsigned*);
 void move_piece(unsigned, unsigned, piece_list*);
 unsigned is_in_check(int);
 unsigned is_attacked(unsigned, int);
+unsigned board_debug();
 
 #endif

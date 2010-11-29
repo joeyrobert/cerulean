@@ -1,7 +1,7 @@
-#ifndef PIECE_LIST_H 
-#define PIECE_LIST_H
-/*
-unsigned long long engine_perft(int);
+#ifndef ENGINE_H 
+#define ENGINE_H
+
+unsigned long long engine_perft(unsigned depth);
 void engine_divide(int);
-*/
+
 #endif
