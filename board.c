@@ -504,7 +504,7 @@ unsigned is_attacked(unsigned index, int by) {
 
             if(pieces[new_move] == EMPTY)
                 continue;                       
-            else if(colours[new_move] == -turn && (pieces[new_move] == BISHOP || pieces[new_move] == QUEEN))
+            else if(colours[new_move] == by && (pieces[new_move] == BISHOP || pieces[new_move] == QUEEN))
                 return 1;
         } while(1);
 
@@ -516,7 +516,7 @@ unsigned is_attacked(unsigned index, int by) {
 
             if(pieces[new_move] == EMPTY)
                 continue;                       
-            else if(colours[new_move] == -turn && (pieces[new_move] == ROOK || pieces[new_move] == QUEEN))
+            else if(colours[new_move] == by && (pieces[new_move] == ROOK || pieces[new_move] == QUEEN))
                 return 1;
         } while(1);
     }

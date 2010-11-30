@@ -3,16 +3,12 @@
 #include "board.h"
 #include "piece_list.h"
 #include "engine.h"
+#include "util.h"
 
 int main() {
-    unsigned long long result;
-    unsigned count, moves[256];
+    char fuck[50];
     board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    count = gen_moves(moves);
-    board_add(moves[6]);
-    count = gen_moves(moves);
-    board_add(moves[0]);
-    board_draw();
-    engine_divide(1);
+    engine_divide(4);
+    gets(fuck);
     return 0;
 }

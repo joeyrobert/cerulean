@@ -34,7 +34,7 @@ unsigned piece_to_index(char* piece) {
 
 void index_to_piece(unsigned index, char* piece) {
     piece[0] = (char)('a' + INDEX2COLUMN(index));
-    piece[1] = (char)(((int)'0') + INDEX2ROW(index) + 1);
+    piece[1] = (char)(((int)'1') + INDEX2ROW(index));
     piece[2] = '\0';
 }
 
@@ -53,7 +53,6 @@ void describe_moves(unsigned *moves, unsigned move_count) {
   unsigned i; char str[5];
   for(i = 0; i < move_count; i++) {
       move_to_string(moves[i], str);
-      printf("%s, ", str);
-  }  
-  printf("\n");
+      printf("%u %s\n", i, str);
+  }
 }
