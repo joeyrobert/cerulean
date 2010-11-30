@@ -528,7 +528,7 @@ unsigned is_attacked(unsigned index, int by) {
         /* Vertical */
         new_move = index;
         do {
-            new_move += delta_diagonal[j];
+            new_move += delta_vertical[j];
             if(!LEGAL_MOVE(new_move) || colours[new_move] == -1*by) break;
 
             if(colours[new_move] == by && (pieces[new_move] == ROOK || pieces[new_move] == QUEEN))
