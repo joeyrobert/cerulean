@@ -520,7 +520,7 @@ unsigned is_attacked(unsigned index, int by) {
         do {
             new_move += delta_diagonal[j];
             if(!LEGAL_MOVE(new_move) || colours[new_move] == -1*by) break;
-
+            if(pieces[new_move] != EMPTY && pieces[new_move] != BISHOP && pieces[new_move] != QUEEN) break;
             if(colours[new_move] == by && (pieces[new_move] == BISHOP || pieces[new_move] == QUEEN))
                 return 1;
         } while(1);
@@ -530,7 +530,7 @@ unsigned is_attacked(unsigned index, int by) {
         do {
             new_move += delta_vertical[j];
             if(!LEGAL_MOVE(new_move) || colours[new_move] == -1*by) break;
-
+            if(pieces[new_move] != EMPTY && pieces[new_move] != ROOK && pieces[new_move] != QUEEN) break;
             if(colours[new_move] == by && (pieces[new_move] == ROOK || pieces[new_move] == QUEEN))
                 return 1;
         } while(1);

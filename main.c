@@ -12,7 +12,7 @@ int main() {
     engine_divide(4);
     count = gen_moves(moves);
     describe_moves(moves, count);
-    board_add(moves[0]);
+    board_add(moves[3]);
     engine_divide(3);
     count = gen_moves(moves);
     describe_moves(moves, count);
@@ -20,7 +20,7 @@ int main() {
     engine_divide(2);
     count = gen_moves(moves);
     describe_moves(moves, count);
-    board_add(moves[16]);
+    board_add(moves[18]);
     engine_divide(1);
     gets(fuck);
     return 0;
