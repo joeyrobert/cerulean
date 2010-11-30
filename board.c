@@ -305,7 +305,26 @@ unsigned gen_moves(unsigned* moves) {
         }
     }
 
-    /* TODO: Castling */
+    /* Castling */
+    switch(turn) {
+    case WHITE:
+        /* this tries to minimize the times it calls is_attacked */
+        if(((castling & CASTLE_WK) || (castling & CASTLE_WQ)) && !is_in_check(WHITE)) {
+            if((castling & CASTLE_WQ) && pieces[1] == EMPTY && pieces[2] == EMPTY && pieces[3] == EMPTY && !is_attacked(2, BLACK) && !is_attacked(3, BLACK))
+                moves[count++] = MOVE_NEW(4, 2, BITS_CASTLE, 0);
+            if((castling & CASTLE_WK) && pieces[5] == EMPTY && pieces[6] == EMPTY && !is_attacked(5, BLACK) && !is_attacked(6, BLACK))
+                moves[count++] = MOVE_NEW(4, 6, BITS_CASTLE, 0);
+        }
+        break;
+    case BLACK:
+        if(((castling & CASTLE_BK) || (castling & CASTLE_BQ)) && !is_in_check(BLACK)) {
+            if((castling & CASTLE_BQ) && pieces[113] == EMPTY && pieces[114] == EMPTY && pieces[115] == EMPTY && !is_attacked(114, WHITE) && !is_attacked(115, WHITE))
+                moves[count++] = MOVE_NEW(116, 114, BITS_CASTLE, 0);
+            if((castling & CASTLE_BK) && pieces[117] == EMPTY && pieces[118] == EMPTY && !is_attacked(117, WHITE) && !is_attacked(118, WHITE))
+                moves[count++] = MOVE_NEW(116, 118, BITS_CASTLE, 0);
+        }
+        break;
+    }
 
     return count;
 }
@@ -500,11 +519,9 @@ unsigned is_attacked(unsigned index, int by) {
         new_move = index;
         do {
             new_move += delta_diagonal[j];
-            if(!LEGAL_MOVE(new_move) || colours[new_move] == turn) break;
+            if(!LEGAL_MOVE(new_move) || colours[new_move] == -1*by) break;
 
-            if(pieces[new_move] == EMPTY)
-                continue;                       
-            else if(colours[new_move] == by && (pieces[new_move] == BISHOP || pieces[new_move] == QUEEN))
+            if(colours[new_move] == by && (pieces[new_move] == BISHOP || pieces[new_move] == QUEEN))
                 return 1;
         } while(1);
 
@@ -512,11 +529,9 @@ unsigned is_attacked(unsigned index, int by) {
         new_move = index;
         do {
             new_move += delta_diagonal[j];
-            if(!LEGAL_MOVE(new_move) || colours[new_move] == turn) break;
+            if(!LEGAL_MOVE(new_move) || colours[new_move] == -1*by) break;
 
-            if(pieces[new_move] == EMPTY)
-                continue;                       
-            else if(colours[new_move] == by && (pieces[new_move] == ROOK || pieces[new_move] == QUEEN))
+            if(colours[new_move] == by && (pieces[new_move] == ROOK || pieces[new_move] == QUEEN))
                 return 1;
         } while(1);
     }
