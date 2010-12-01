@@ -30,17 +30,34 @@ void board_new() {
     piece_list_new(&b_pieces);
 }
 
-void board_set_fen(char* fen) {
+void board_set_fen(char* fen) {    
     unsigned row, column, colour, skip, iter, number;
     board_new();
 	row = 7; column = 0; skip = 0;
 
     /* Board and piece lists */
     while(*fen != ' ') {
-        if(*fen == '/') { row--; fen++; column = 0; skip = 0; continue;  }
-        if(skip > 0) { skip--; fen++; column = (column + 1) % 8; continue; }
+        if(*fen == '/') {
+            row--;
+            fen++;
+            column = 0;
+            skip = 0;
+            continue;
+        }
+
+        if(skip > 0){
+            skip--;
+            column++;
+            continue;
+        }
+
         number = *fen - '0';
-        if(number > 0 && number <= 8) { skip = number - 1; fen++; column = (column + 1) % 8; continue; }
+        if(number > 0 && number <= 8) {
+            skip = number - 1;
+            fen++;
+            column++;
+            continue;
+        }
 
         if (*fen == tolower(*fen)) {
             colour = BLACK;
@@ -52,7 +69,8 @@ void board_set_fen(char* fen) {
 
         colours[ROWCOLUMN2INDEX(row, column)] = colour;
         pieces[ROWCOLUMN2INDEX(row, column)] = piece_name_to_value(tolower(*fen));
-        fen++; column = (column + 1) % 8;
+        fen++;
+        column++;
     }
 
     /* Turn */
@@ -353,7 +371,7 @@ unsigned board_add(unsigned move) {
         king = &b_king;
     }
 
-    /* REGULAR MOVE AND PAWN PUSH */
+    /* REGULAR MOVE */
     if(MOVE2BITS(move) == 0) {
         move_piece(from, to, my_pieces);
         enpassant_target = NO_ENPASSANT;
@@ -373,6 +391,7 @@ unsigned board_add(unsigned move) {
         if(move & BITS_CAPTURE)
             piece_list_subtract(their_pieces, to);
         move_piece(from, to, my_pieces);
+        pieces[to] = MOVE2PROMOTE(move);
         enpassant_target = NO_ENPASSANT;
     /* CAPTURE */
     } else if(move & BITS_CAPTURE) {
@@ -472,6 +491,7 @@ void board_subtract() {
             colours[to] = -1 * turn;
         }
         move_piece(to, from, my_pieces);
+        pieces[from] = PAWN;
     /* CAPTURE */
     } else if(move & BITS_CAPTURE) {
         piece_list_add(their_pieces, to);

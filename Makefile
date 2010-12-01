@@ -1,20 +1,20 @@
 all: board.o piece_list.o engine.o util.o main.o
-	clang -Wall -g -pedantic -std=c99 -fstack-protector-all -o cerulean board.o piece_list.o engine.o util.o main.o
+	gcc -Wall -pedantic -std=c99 -O2 -o cerulean-intel board.o piece_list.o engine.o util.o main.o
 
 board.o: board.c board.h move.h piece_list.h piece_list.c
-	clang -Wall -g -pedantic -std=c99 -fstack-protector-all -c board.c
+	icl -Wall -pedantic -std=c99 -O2 -c board.c
 
 piece_list.o: piece_list.h piece_list.c
-	clang -Wall -g -pedantic -std=c99 -fstack-protector-all -c piece_list.c
+	icl -Wall -pedantic -std=c99 -O2 -c piece_list.c
 
 main.o: main.c
-	clang -Wall -g -pedantic -std=c99 -fstack-protector-all -c main.c
+	icl -Wall -pedantic -std=c99 -O2 -c main.c
 
 util.o: util.c
-	clang -Wall -g -pedantic -std=c99 -fstack-protector-all -c util.c
+	icl -Wall -pedantic -std=c99 -O2 -c util.c
 
 engine.o: engine.h engine.c board.o
-	clang -Wall -g -pedantic -std=c99 -fstack-protector-all -c engine.c
+	icl -Wall -pedantic -std=c99 -O2 -c engine.c
 
 clean: 
 	rm *.o cerulean
