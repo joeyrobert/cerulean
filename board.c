@@ -126,7 +126,9 @@ void board_set_fen(char* fen) {
             b_king = b_pieces.index[iter];
             break;
         }
-    } 
+    }
+
+    zobrist = board_gen_zobrist();
 }
 
 void board_draw() {
@@ -351,6 +353,7 @@ unsigned gen_moves(unsigned* moves) {
 unsigned board_add(unsigned move) {
     unsigned from, to, *king;
     piece_list *my_pieces, *their_pieces;
+    ZOBRIST (*my_zobrist)[128], (*their_zobrist)[128];
 
     from = MOVE2FROM(move);
     to = MOVE2TO(move);
@@ -358,17 +361,25 @@ unsigned board_add(unsigned move) {
     history[total_history][0] = move;
     history[total_history][1] = pieces[to];         /* piece that existed there before,         */
     history[total_history][2] = enpassant_target;   /* will either be empty or -1 * turn colour */
-    history[total_history][3] = castling;
+    history[total_history][3] = castling;    
+    zobrist_history[total_history] = zobrist;
     total_history++;
 
-    if(turn == WHITE) {
+    switch(turn) {
+    case WHITE:
         my_pieces = &w_pieces;
         their_pieces = &b_pieces;
+        my_zobrist = zobrist_w;
+        their_zobrist = zobrist_b;
         king = &w_king;
-    } else {
+        break;
+    case BLACK:
         my_pieces = &b_pieces;
         their_pieces = &w_pieces;
+        my_zobrist = zobrist_b;
+        their_zobrist = zobrist_w;
         king = &b_king;
+        break;
     }
 
     /* REGULAR MOVE */
@@ -461,6 +472,7 @@ void board_subtract() {
     previous_piece = history[total_history][1];     /* piece that existed there before,         */
     enpassant_target = history[total_history][2];   /* will either be empty or -1 * turn colour */
     castling = history[total_history][3];
+    zobrist = zobrist_history[total_history];
     
     from = MOVE2FROM(move);
     to = MOVE2TO(move);
@@ -612,4 +624,30 @@ unsigned board_debug() {
         sum += w_pieces.index[i];
 
     return sum;
+}
+
+
+ZOBRIST board_gen_zobrist() {
+    ZOBRIST new_zobrist;
+    unsigned i, index;
+    new_zobrist = 0;
+
+    for(i = 0; i < w_pieces.count; i++) {
+        index = w_pieces.index[i];
+        new_zobrist ^= zobrist_w[pieces[index]][index];
+    }
+
+    for(i = 0; i < b_pieces.count; i++) {
+        index = w_pieces.index[i];
+        new_zobrist ^= zobrist_b[pieces[index]][index];
+    }
+
+    new_zobrist ^= zobrist_enpassant[enpassant_target];
+    if(castling & CASTLE_WK) new_zobrist ^= zobrist_castling[CASTLE_WK];
+    if(castling & CASTLE_WQ) new_zobrist ^= zobrist_castling[CASTLE_WQ];
+    if(castling & CASTLE_BK) new_zobrist ^= zobrist_castling[CASTLE_BK];
+    if(castling & CASTLE_BQ) new_zobrist ^= zobrist_castling[CASTLE_BQ];
+    if(turn == WHITE) new_zobrist ^= zobrist_side;
+
+    return new_zobrist;
 }

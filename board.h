@@ -2,10 +2,11 @@
 #define BOARD_H
 
 #include "piece_list.h"
+#include "zobrist.h"
 
 #define WHITE        1
 #define BLACK        -1
-#define NO_ENPASSANT 137
+#define NO_ENPASSANT 128
 #define OFF          137 /* used in reverse list */
 #define EMPTY        0
 
@@ -39,7 +40,9 @@ unsigned castling;
 unsigned enpassant_target;
 unsigned half_move_clock;
 unsigned full_move_number;
-unsigned history[1024][4];
+ZOBRIST zobrist;
+ZOBRIST zobrist_history[2048];
+unsigned history[2048][4];
 unsigned total_history;
 
 void board_new();
@@ -47,6 +50,7 @@ void board_draw();
 void board_set_fen(char*);
 unsigned board_add(unsigned);
 void board_subtract();
+ZOBRIST board_gen_zobrist();
 unsigned gen_moves(unsigned*);
 void move_piece(unsigned, unsigned, piece_list*);
 unsigned is_in_check(int);
