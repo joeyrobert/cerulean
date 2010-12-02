@@ -398,6 +398,7 @@ unsigned board_add(unsigned move) {
         piece_list_subtract(their_pieces, to);
         move_piece(from, to, my_pieces);
         enpassant_target = NO_ENPASSANT;
+    /* PAWN MOVE */
     } else if(move & BITS_PAWN_MOVE) {
         move_piece(from, to, my_pieces);
         enpassant_target = NO_ENPASSANT;
@@ -485,13 +486,13 @@ void board_subtract() {
         colours[enpassant_target - turn*16] = -1*turn;
     /* PROMOTE (must be before capture) */
     } else if(move & BITS_PROMOTE) {
+        move_piece(to, from, my_pieces);
+        pieces[from] = PAWN;
         if(move & BITS_CAPTURE) {
             piece_list_add(their_pieces, to);
             pieces[to] = previous_piece;
             colours[to] = -1 * turn;
         }
-        move_piece(to, from, my_pieces);
-        pieces[from] = PAWN;
     /* CAPTURE */
     } else if(move & BITS_CAPTURE) {
         piece_list_add(their_pieces, to);

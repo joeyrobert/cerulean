@@ -72,6 +72,7 @@
   <ItemGroup>
     <ClCompile Include="board.c" />
     <ClCompile Include="engine.c" />
+    <ClCompile Include="hash_table.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="piece_list.c" />
     <ClCompile Include="util.c" />

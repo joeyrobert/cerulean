@@ -6,7 +6,7 @@
 #include "move.h"
 
 unsigned long long engine_perft(unsigned depth) {
-    unsigned moves[256], count, i, before, after;
+    unsigned moves[256], count, i;
     unsigned long long total;
     if(depth == 0) return 1;
     
@@ -14,13 +14,9 @@ unsigned long long engine_perft(unsigned depth) {
     total = 0;
 
     for(i = 0; i < count; i++) {
-        before = board_debug();
         if(board_add(moves[i])) {
             total += engine_perft(depth - 1);
             board_subtract();
-        }
-        after = board_debug();
-        if(before != after) {
         }
     }
     return total;
@@ -55,11 +51,12 @@ void engine_test() {
     unsigned long long actual;
     long expected;
     unsigned total_tests, passed_tests;
+    unsigned long long expected_moves, actual_moves;
 
     file = fopen("suites/perftsuite.epd", "r");
-    total_tests = 0;
-    passed_tests = 0;
-   
+    total_tests = 0; passed_tests = 0;
+    expected_moves = 0; actual_moves = 0;
+
     while(fgets(line, 200, file) != NULL) {
         pch = strtok(line, ";");
         strcpy (fen, pch);
@@ -71,13 +68,9 @@ void engine_test() {
             depth = pch[1] - '0';
             expected = atol(&pch[3]);            
             printf("%i %li ", depth, expected);
-            /* for now */
-            if(expected > 200000000) {
-                printf(".\n");
-                passed_tests++;
-                continue;
-            }
             actual = engine_perft(depth);
+            expected_moves += expected;
+            actual_moves += actual;
             total_tests++;
 
             if(expected == actual) {
@@ -91,4 +84,5 @@ void engine_test() {
         printf("\n");
     }
     printf("\n%u/%u tests passed.\n", passed_tests, total_tests);
+    printf("%llu moves run (%llu expected).\n", actual_moves, expected_moves);
 }

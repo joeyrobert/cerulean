@@ -29,7 +29,7 @@ char piece_value_to_name(unsigned value) {
 }
 
 unsigned piece_to_index(char* piece) {
-    return ROWCOLUMN2INDEX((piece[1] - '0'), (piece[0] - 'a'));
+    return ROWCOLUMN2INDEX((piece[1] - '0' - 1), (piece[0] - 'a'));
 }
 
 void index_to_piece(unsigned index, char* piece) {
