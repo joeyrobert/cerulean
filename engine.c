@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "board.h"
 #include "util.h"
 #include "move.h"
 
-unsigned long long engine_perft(unsigned depth) {
+uint64_t engine_perft(unsigned depth) {
     unsigned moves[256], count, i;
-    unsigned long long total;
+    uint64_t total;
     if(depth == 0) return 1;
     
     count = gen_moves(moves);
@@ -25,7 +26,7 @@ unsigned long long engine_perft(unsigned depth) {
 void engine_divide(int depth) {
     char str[5];
     unsigned moves[256], count, i;
-    unsigned long long total, perft;
+    uint64_t total, perft;
     printf("Divide at depth %02i\n", depth);
     printf("------------------\n");
 
@@ -48,10 +49,10 @@ void engine_test() {
     FILE *file;
     char line[200], *pch, fen[200];
     int depth;
-    unsigned long long actual;
+    uint64_t actual;
     long expected;
     unsigned total_tests, passed_tests;
-    unsigned long long expected_moves, actual_moves;
+    uint64_t expected_moves, actual_moves;
 
     file = fopen("suites/perftsuite.epd", "r");
     total_tests = 0; passed_tests = 0;

@@ -3,9 +3,9 @@
 
 /* size: 1 + 16 + 128 = 145 * sizeof(unsigned) */
 typedef struct {
-  unsigned count;        /* total number available */
-  unsigned index[16];    /* piece => board index */
-  unsigned reverse[128]; /* board_index => piece */
+    unsigned count;        /* total number available */
+    unsigned index[16];    /* piece => board index */
+    unsigned reverse[128]; /* board_index => piece */
 } piece_list;
 
 void piece_list_new(piece_list*);

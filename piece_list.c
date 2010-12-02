@@ -12,7 +12,7 @@
 
 */
 void piece_list_new(piece_list* list) {
-    memset(list, EMPTY, 145*sizeof(unsigned));
+    memset(list, EMPTY, sizeof(piece_list));
 }
 
 void piece_list_add(piece_list* list, unsigned index) {

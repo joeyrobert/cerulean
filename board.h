@@ -5,17 +5,17 @@
 
 #define WHITE        1
 #define BLACK        -1
-#define NO_ENPASSANT  137
+#define NO_ENPASSANT 137
 #define OFF          137 /* used in reverse list */
 #define EMPTY        0
 
-/* Pieces */
+/* Pieces (important for zobrist) */
 #define PAWN   1
 #define BISHOP 2
-#define KNIGHT 4
-#define ROOK   8
-#define QUEEN  16
-#define KING   32
+#define KNIGHT 3
+#define ROOK   4
+#define QUEEN  5
+#define KING   6
 
 /* Castling */
 #define CASTLE_WK 1
