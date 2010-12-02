@@ -31,7 +31,7 @@ void board_new() {
 }
 
 void board_set_fen(char* fen) {    
-    unsigned row, column, colour, skip, iter, number;
+    unsigned row, column, colour, skip, i, number;
     board_new();
 	row = 7; column = 0; skip = 0;
 
@@ -113,17 +113,16 @@ void board_set_fen(char* fen) {
     full_move_number = atoi(fen);
 
     /* King positions */
-    iter = 0;
-    for(iter = 0; iter < w_pieces.count; iter++) {
-        if(pieces[w_pieces.index[iter]] == KING) {
-            w_king = w_pieces.index[iter];
+    for(i = 0; i < w_pieces.count; i++) {
+        if(pieces[w_pieces.index[i]] == KING) {
+            w_king = w_pieces.index[i];
             break;
         }
     } 
 
-    for(iter = 0; iter < b_pieces.count; iter++) {
-        if(pieces[b_pieces.index[iter]] == KING) {
-            b_king = b_pieces.index[iter];
+    for(i = 0; i < b_pieces.count; i++) {
+        if(pieces[b_pieces.index[i]] == KING) {
+            b_king = b_pieces.index[i];
             break;
         }
     }
@@ -156,6 +155,7 @@ void board_draw() {
     printf("En Passant Target: %u (%s)\n", enpassant_target, ep);
     printf("Half move number:  %u\n", half_move_clock);
     printf("Full move number:  %u\n", full_move_number);
+    printf("Zobrist:           0x%016llX\n", zobrist);
     printf("W King: %u, B King: %u \n", w_king, b_king);
 
     printf("White pieces: ");
@@ -352,7 +352,7 @@ unsigned gen_moves(unsigned* moves) {
 /* updates board and board list */
 unsigned board_add(unsigned move) {
     unsigned from, to, *king;
-    piece_list *my_pieces, *their_pieces;
+    piece_list *their_pieces;
     ZOBRIST (*my_zobrist)[128], (*their_zobrist)[128];
 
     from = MOVE2FROM(move);
@@ -367,14 +367,12 @@ unsigned board_add(unsigned move) {
 
     switch(turn) {
     case WHITE:
-        my_pieces = &w_pieces;
         their_pieces = &b_pieces;
         my_zobrist = zobrist_w;
         their_zobrist = zobrist_b;
         king = &w_king;
         break;
     case BLACK:
-        my_pieces = &b_pieces;
         their_pieces = &w_pieces;
         my_zobrist = zobrist_b;
         their_zobrist = zobrist_w;
@@ -384,52 +382,52 @@ unsigned board_add(unsigned move) {
 
     /* REGULAR MOVE */
     if(MOVE2BITS(move) == 0) {
-        move_piece(from, to, my_pieces);
-        enpassant_target = NO_ENPASSANT;
+        move_piece(from, to);
+        board_enpassant(NO_ENPASSANT);
     /* DOUBLE PAWN */
     } else if(move & BITS_PAWN_DOUBLE) {
-        move_piece(from, to, my_pieces);
-        enpassant_target = to - 16*turn;
+        move_piece(from, to);
+        board_enpassant(to - 16*turn);
     /* EN PASSANT (must be before capture) */
     } else if(move & BITS_ENPASSANT) {
         piece_list_subtract(their_pieces, enpassant_target - turn*16);
         pieces[enpassant_target - turn*16] = EMPTY;
         colours[enpassant_target - turn*16] = EMPTY;
-        move_piece(from, to, my_pieces);
-        enpassant_target = NO_ENPASSANT;
+        move_piece(from, to);
+        board_enpassant(NO_ENPASSANT);
     /* PROMOTE (must be before capture) */
     } else if(move & BITS_PROMOTE) {
         if(move & BITS_CAPTURE)
-            piece_list_subtract(their_pieces, to);
-        move_piece(from, to, my_pieces);
+            board_capture_piece(from, to);
+        else
+            move_piece(from, to);
         pieces[to] = MOVE2PROMOTE(move);
-        enpassant_target = NO_ENPASSANT;
+        board_enpassant(NO_ENPASSANT);
     /* CAPTURE */
     } else if(move & BITS_CAPTURE) {
-        piece_list_subtract(their_pieces, to);
-        move_piece(from, to, my_pieces);
-        enpassant_target = NO_ENPASSANT;
+        board_capture_piece(from, to);
+        board_enpassant(NO_ENPASSANT);
     /* PAWN MOVE */
     } else if(move & BITS_PAWN_MOVE) {
-        move_piece(from, to, my_pieces);
-        enpassant_target = NO_ENPASSANT;
+        move_piece(from, to);
+        board_enpassant(NO_ENPASSANT);
     /* CASTLE */
     } else if(move & BITS_CASTLE) {
-        move_piece(from, to, my_pieces);
-        enpassant_target = NO_ENPASSANT;
+        move_piece(from, to);
+        board_enpassant(NO_ENPASSANT);
 
         switch(to) {
         case 2:
-            move_piece(0, 3, my_pieces);
+            move_piece(0, 3);
             break;
         case 6:
-            move_piece(7, 5, my_pieces);
+            move_piece(7, 5);
             break;
         case 118:
-            move_piece(119, 117, my_pieces);
+            move_piece(119, 117);
             break;
         case 114:
-            move_piece(112, 115, my_pieces);
+            move_piece(112, 115);
             break;       
         }
         
@@ -464,7 +462,7 @@ unsigned board_add(unsigned move) {
 
 void board_subtract() {
     unsigned from, to, *king, move, previous_piece;
-    piece_list *my_pieces, *their_pieces;
+    piece_list *their_pieces;
     turn = -1 * turn;
 
     total_history--;
@@ -477,28 +475,30 @@ void board_subtract() {
     from = MOVE2FROM(move);
     to = MOVE2TO(move);
 
-    if(turn == WHITE) {
-        my_pieces = &w_pieces;
+    
+    switch(turn) {
+    case WHITE:
         their_pieces = &b_pieces;
         king = &w_king;
-    } else {
-        my_pieces = &b_pieces;
+        break;
+    case BLACK:
         their_pieces = &w_pieces;
         king = &b_king;
+        break;
     }
 
     /* REGULAR MOVE, DOUBLE PAWN */
     if(MOVE2BITS(move) == 0 || move & BITS_PAWN_DOUBLE) {
-        move_piece(to, from, my_pieces);
+        move_piece(to, from);
     /* EN PASSANT (must be before capture) */
     } else if(move & BITS_ENPASSANT) {
         piece_list_add(their_pieces, enpassant_target - turn*16);
-        move_piece(to, from, my_pieces);    
+        move_piece(to, from);    
         pieces[enpassant_target - turn*16] = PAWN;
         colours[enpassant_target - turn*16] = -1*turn;
     /* PROMOTE (must be before capture) */
     } else if(move & BITS_PROMOTE) {
-        move_piece(to, from, my_pieces);
+        move_piece(to, from);
         pieces[from] = PAWN;
         if(move & BITS_CAPTURE) {
             piece_list_add(their_pieces, to);
@@ -508,28 +508,28 @@ void board_subtract() {
     /* CAPTURE */
     } else if(move & BITS_CAPTURE) {
         piece_list_add(their_pieces, to);
-        move_piece(to, from, my_pieces);
+        move_piece(to, from);
         pieces[to] = previous_piece;
         colours[to] = -1 * turn;
     /* PAWN PUSH (must be after capture) */
     } else if(move & BITS_PAWN_MOVE) {
-        move_piece(to, from, my_pieces);
+        move_piece(to, from);
     /* CASTLE */
     } else if(move & BITS_CASTLE) {
-        move_piece(to, from, my_pieces);
+        move_piece(to, from);
 
         switch(to) {
         case 2:
-            move_piece(3, 0, my_pieces);
+            move_piece(3, 0);
             break;
         case 6:
-            move_piece(5, 7, my_pieces);
+            move_piece(5, 7);
             break;
         case 118:
-            move_piece(117, 119, my_pieces);
+            move_piece(117, 119);
             break;
         case 114:
-            move_piece(115, 112, my_pieces);
+            move_piece(115, 112);
             break;       
         }
     }
@@ -595,13 +595,40 @@ unsigned is_in_check(int side) {
         return is_attacked(b_king, WHITE);
 }
 
-void move_piece(unsigned from, unsigned to, piece_list* list) {
+void board_capture_piece(unsigned from, unsigned to) {
+    switch(colours[to]) {
+    case WHITE:
+        piece_list_subtract(&w_pieces, to);
+        break;
+    case BLACK:
+        piece_list_subtract(&b_pieces, to);
+        break;
+    }
+    move_piece(from, to);
+}
+
+void move_piece(unsigned from, unsigned to) {
     pieces[to] = pieces[from];
     colours[to] = colours[from];
     pieces[from] = EMPTY;
     colours[from] = EMPTY;
-    piece_list_subtract(list, from);
-    piece_list_add(list, to);
+    switch(colours[to]) {
+    case WHITE:
+        piece_list_subtract(&w_pieces, from);
+        piece_list_add(&w_pieces, to);
+        break;
+    case BLACK:
+        piece_list_subtract(&b_pieces, from);
+        piece_list_add(&b_pieces, to);
+        break;
+    }
+}
+
+/* Takes care of Zobrist key hashing */
+void board_enpassant(unsigned new_enpassant_target) {
+    zobrist ^= zobrist_enpassant[enpassant_target];
+    zobrist ^= zobrist_enpassant[new_enpassant_target];
+    enpassant_target = new_enpassant_target;
 }
 
 /* This is NOT foolproof. Different boards may appear identical.

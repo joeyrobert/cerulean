@@ -6,7 +6,7 @@
 
 #define WHITE        1
 #define BLACK        -1
-#define NO_ENPASSANT 128
+#define NO_ENPASSANT 128 /* important for zobrist */
 #define OFF          137 /* used in reverse list */
 #define EMPTY        0
 
@@ -51,8 +51,10 @@ void board_set_fen(char*);
 unsigned board_add(unsigned);
 void board_subtract();
 ZOBRIST board_gen_zobrist();
+void board_enpassant(unsigned);
 unsigned gen_moves(unsigned*);
-void move_piece(unsigned, unsigned, piece_list*);
+void board_capture_piece(unsigned, unsigned);
+void move_piece(unsigned, unsigned);
 unsigned is_in_check(int);
 unsigned is_attacked(unsigned, int);
 unsigned board_debug();
