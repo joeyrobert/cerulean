@@ -374,12 +374,15 @@ unsigned board_add(unsigned move) {
     } else if(move & BITS_ENPASSANT) {
         switch(turn) {
         case WHITE:
+            zobrist ^= zobrist_b[pieces[enpassant_target - turn*16]][enpassant_target - turn*16];
             piece_list_subtract(&b_pieces, enpassant_target - turn*16);
             break;
         case BLACK:
+            zobrist ^= zobrist_w[pieces[enpassant_target - turn*16]][enpassant_target - turn*16];
             piece_list_subtract(&w_pieces, enpassant_target - turn*16);
             break;
         }
+
         pieces[enpassant_target - turn*16] = EMPTY;
         colours[enpassant_target - turn*16] = EMPTY;
         move_piece(from, to);
@@ -420,15 +423,26 @@ unsigned board_add(unsigned move) {
             break;       
         }
         
-        
         switch(turn) {
         case WHITE:
-            if(castling & CASTLE_WQ) castling -= CASTLE_WQ;
-            if(castling & CASTLE_WK) castling -= CASTLE_WK;
+            if(castling & CASTLE_WQ) {
+                castling -= CASTLE_WQ;
+                zobrist ^= zobrist_castling[CASTLE_WQ];
+            }
+            if(castling & CASTLE_WK) {
+                castling -= CASTLE_WK;
+                zobrist ^= zobrist_castling[CASTLE_WK];
+            }
             break;
         case BLACK:
-            if(castling & CASTLE_BQ) castling -= CASTLE_BQ;
-            if(castling & CASTLE_BK) castling -= CASTLE_BK;
+            if(castling & CASTLE_BQ) {
+                castling -= CASTLE_BQ;
+                zobrist ^= zobrist_castling[CASTLE_BQ];
+            }
+            if(castling & CASTLE_BK) {
+                castling -= CASTLE_BK;
+                zobrist ^= zobrist_castling[CASTLE_BK];
+            }
             break;
         }
     }
@@ -445,12 +459,26 @@ unsigned board_add(unsigned move) {
         }
     }
     
-    if((to == 0 || from == 0 || to == 4 || from == 4) && (castling & CASTLE_WQ)) castling -= CASTLE_WQ;
-    if((to == 7 || from == 7 || to == 4 || from == 4) && (castling & CASTLE_WK)) castling -= CASTLE_WK;
-    if((to == 112 || from == 112 || to == 116 || from == 116) && (castling & CASTLE_BQ)) castling -= CASTLE_BQ;
-    if((to == 119 || from == 119 || to == 116 || from == 116) && (castling & CASTLE_BK)) castling -= CASTLE_BK;
+    if((castling & CASTLE_WQ) && (to == 0 || from == 0 || to == 4 || from == 4)) {
+        castling -= CASTLE_WQ;
+        zobrist ^= zobrist_castling[CASTLE_WQ];
+    }
+
+    if((castling & CASTLE_WK) && (to == 7 || from == 7 || to == 4 || from == 4)) {
+        castling -= CASTLE_WK;
+        zobrist ^= zobrist_castling[CASTLE_WK];
+    }
+    if((castling & CASTLE_BQ) && (to == 112 || from == 112 || to == 116 || from == 116)) {
+        castling -= CASTLE_BQ;
+        zobrist ^= zobrist_castling[CASTLE_BQ];
+    }
+    if((castling & CASTLE_BK) && (to == 119 || from == 119 || to == 116 || from == 116)) {
+        castling -= CASTLE_BK;
+        zobrist ^= zobrist_castling[CASTLE_BK];
+    }
     
     turn = -1 * turn;
+    zobrist ^= zobrist_side;
 
     /* revert if in check */
     if(is_in_check(-1 * turn)) {
@@ -615,9 +643,11 @@ unsigned is_in_check(int side) {
 void board_capture_piece(unsigned from, unsigned to) {
     switch(colours[to]) {
     case WHITE:
+        zobrist ^= zobrist_w[pieces[to]][to];
         piece_list_subtract(&w_pieces, to);
         break;
     case BLACK:
+        zobrist ^= zobrist_b[pieces[to]][to];
         piece_list_subtract(&b_pieces, to);
         break;
     }
@@ -633,10 +663,16 @@ void move_piece(unsigned from, unsigned to) {
     case WHITE:
         piece_list_subtract(&w_pieces, from);
         piece_list_add(&w_pieces, to);
+        
+        zobrist ^= zobrist_w[pieces[to]][from];
+        zobrist ^= zobrist_w[pieces[to]][to];
         break;
     case BLACK:
         piece_list_subtract(&b_pieces, from);
         piece_list_add(&b_pieces, to);
+
+        zobrist ^= zobrist_b[pieces[to]][from];
+        zobrist ^= zobrist_b[pieces[to]][to];
         break;
     }
 }

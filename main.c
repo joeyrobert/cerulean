@@ -13,9 +13,11 @@ int main() {
     zobrist_fill();
     
     board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    zobrist = board_gen_zobrist();
-    board_draw();
-    engine_test();
+    move_piece(16, 32);
+    what = board_gen_zobrist();
+    printf("%llu", zobrist);
+    //board_draw();
+    //engine_test();
     //hash_table *table;
     //table = (hash_table*) malloc(sizeof(hash_table));
     //hash_new(table, 23);
