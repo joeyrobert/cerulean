@@ -17,10 +17,6 @@ uint64_t engine_perft(unsigned depth) {
 
     for(i = 0; i < count; i++) {
         if(board_add(moves[i])) {
-            after = board_gen_zobrist();
-            if(after != zobrist) {
-                printf("WTF MAN I THOUGHT WE WAS PALS");
-            }
             total += engine_perft(depth - 1);
             board_subtract();
         }

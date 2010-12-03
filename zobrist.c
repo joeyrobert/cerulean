@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <time.h>
 #include "zobrist.h"
 
 ZOBRIST zobrist_rand() {
@@ -12,6 +13,7 @@ ZOBRIST zobrist_rand() {
 
 void zobrist_fill() {
     unsigned i;
+    srand(time(NULL));
     for(i = 0; i < 7*128; i++) {
         zobrist_w[i/128][i%128] = zobrist_rand();
         zobrist_b[i/128][i%128] = zobrist_rand();

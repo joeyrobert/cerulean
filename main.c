@@ -17,7 +17,7 @@ int main() {
     what = board_gen_zobrist();
     printf("%llu", zobrist);
     //board_draw();
-    //engine_test();
+    engine_test();
     //hash_table *table;
     //table = (hash_table*) malloc(sizeof(hash_table));
     //hash_new(table, 23);

@@ -394,6 +394,18 @@ unsigned board_add(unsigned move) {
         else
             move_piece(from, to);
         pieces[to] = MOVE2PROMOTE(move);
+        
+        switch(turn) {
+        case WHITE:
+            zobrist ^= zobrist_w[PAWN][to];
+            zobrist ^= zobrist_w[pieces[to]][to];
+            break;
+        case BLACK:
+            zobrist ^= zobrist_b[PAWN][to];
+            zobrist ^= zobrist_b[pieces[to]][to];
+            break;
+        }
+
         board_enpassant(NO_ENPASSANT);
     /* CAPTURE */
     } else if(move & BITS_CAPTURE) {
@@ -505,7 +517,7 @@ void board_subtract() {
 
     /* REGULAR MOVE, DOUBLE PAWN */
     if(MOVE2BITS(move) == 0 || move & BITS_PAWN_DOUBLE) {
-        move_piece(to, from);
+        move_piece_discreetly(to, from);
     /* EN PASSANT (must be before capture) */
     } else if(move & BITS_ENPASSANT) {
         switch(turn) {
@@ -516,12 +528,12 @@ void board_subtract() {
             piece_list_add(&w_pieces, enpassant_target - turn*16);
             break;
         }
-        move_piece(to, from);    
+        move_piece_discreetly(to, from);    
         pieces[enpassant_target - turn*16] = PAWN;
         colours[enpassant_target - turn*16] = -1*turn;
     /* PROMOTE (must be before capture) */
     } else if(move & BITS_PROMOTE) {
-        move_piece(to, from);
+        move_piece_discreetly(to, from);
         pieces[from] = PAWN;
         if(move & BITS_CAPTURE) {
             switch(turn) {
@@ -545,28 +557,28 @@ void board_subtract() {
             piece_list_add(&w_pieces, to);
             break;
         }
-        move_piece(to, from);
+        move_piece_discreetly(to, from);
         pieces[to] = previous_piece;
         colours[to] = -1 * turn;
     /* PAWN PUSH (must be after capture) */
     } else if(move & BITS_PAWN_MOVE) {
-        move_piece(to, from);
+        move_piece_discreetly(to, from);
     /* CASTLE */
     } else if(move & BITS_CASTLE) {
-        move_piece(to, from);
+        move_piece_discreetly(to, from);
 
         switch(to) {
         case 2:
-            move_piece(3, 0);
+            move_piece_discreetly(3, 0);
             break;
         case 6:
-            move_piece(5, 7);
+            move_piece_discreetly(5, 7);
             break;
         case 118:
-            move_piece(117, 119);
+            move_piece_discreetly(117, 119);
             break;
         case 114:
-            move_piece(115, 112);
+            move_piece_discreetly(115, 112);
             break;       
         }
     }
@@ -654,11 +666,30 @@ void board_capture_piece(unsigned from, unsigned to) {
     move_piece(from, to);
 }
 
+/* Used in subtract move, where zobrist isn't needed */
+void move_piece_discreetly(unsigned from, unsigned to) {
+    pieces[to] = pieces[from];
+    colours[to] = colours[from];
+    pieces[from] = EMPTY;
+    colours[from] = EMPTY;
+    switch(colours[to]) {
+    case WHITE:
+        piece_list_subtract(&w_pieces, from);
+        piece_list_add(&w_pieces, to);
+        break;
+    case BLACK:
+        piece_list_subtract(&b_pieces, from);
+        piece_list_add(&b_pieces, to);
+        break;
+    }
+}
+
 void move_piece(unsigned from, unsigned to) {
     pieces[to] = pieces[from];
     colours[to] = colours[from];
     pieces[from] = EMPTY;
     colours[from] = EMPTY;
+
     switch(colours[to]) {
     case WHITE:
         piece_list_subtract(&w_pieces, from);
@@ -679,9 +710,11 @@ void move_piece(unsigned from, unsigned to) {
 
 /* Takes care of Zobrist key hashing */
 void board_enpassant(unsigned new_enpassant_target) {
-    zobrist ^= zobrist_enpassant[enpassant_target];
-    zobrist ^= zobrist_enpassant[new_enpassant_target];
-    enpassant_target = new_enpassant_target;
+    if(enpassant_target != new_enpassant_target) {
+        zobrist ^= zobrist_enpassant[enpassant_target];
+        zobrist ^= zobrist_enpassant[new_enpassant_target];
+        enpassant_target = new_enpassant_target;
+    }
 }
 
 /* This is NOT foolproof. Different boards may appear identical.
@@ -718,7 +751,7 @@ ZOBRIST board_gen_zobrist() {
     }
 
     for(i = 0; i < b_pieces.count; i++) {
-        index = w_pieces.index[i];
+        index = b_pieces.index[i];
         new_zobrist ^= zobrist_b[pieces[index]][index];
     }
 
