@@ -28,6 +28,8 @@ void board_new() {
     b_king = EMPTY;
     piece_list_new(&w_pieces);
     piece_list_new(&b_pieces);
+    table = (hash_table*) malloc(sizeof(hash_table));
+    hash_new(table, 15);
 }
 
 void board_set_fen(char* fen) {    

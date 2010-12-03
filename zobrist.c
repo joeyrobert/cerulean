@@ -1,19 +1,15 @@
 #include <stdlib.h>
 #include <time.h>
 #include "zobrist.h"
+#include "mt64.h"
 
 ZOBRIST zobrist_rand() {
-    ZOBRIST random;
-    unsigned i;
-    random = 0;
-    for(i = 0; i < 64; i++)
-        random += (ZOBRIST)(rand()&1)<<i;
-    return random;
+    return genrand64_int64();
 }
 
 void zobrist_fill() {
     unsigned i;
-    srand(time(NULL));
+    init_genrand64(3514744284158856431);
     for(i = 0; i < 7*128; i++) {
         zobrist_w[i/128][i%128] = zobrist_rand();
         zobrist_b[i/128][i%128] = zobrist_rand();

@@ -67,6 +67,7 @@
     <ClInclude Include="engine.h" />
     <ClInclude Include="hash_table.h" />
     <ClInclude Include="move.h" />
+    <ClInclude Include="mt64.h" />
     <ClInclude Include="piece_list.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="zobrist.h" />
@@ -76,6 +77,7 @@
     <ClCompile Include="engine.c" />
     <ClCompile Include="hash_table.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="mt64.c" />
     <ClCompile Include="piece_list.c" />
     <ClCompile Include="util.c" />
     <ClCompile Include="zobrist.c" />

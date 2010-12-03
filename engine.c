@@ -8,9 +8,13 @@
 
 uint64_t engine_perft(unsigned depth) {
     unsigned moves[256], count, i;
-    ZOBRIST after;
+    hash_node* node;
     uint64_t total;
     if(depth == 0) return 1;
+
+    node = hash_find(table, zobrist);
+    if(node != NULL && node->depth == depth)
+        return node->sub_nodes;
     
     count = gen_moves(moves);
     total = 0;
@@ -21,6 +25,8 @@ uint64_t engine_perft(unsigned depth) {
             board_subtract();
         }
     }
+
+    hash_add(table, zobrist, depth, total);
     return total;
 }
 

@@ -3,6 +3,7 @@
 
 #include "piece_list.h"
 #include "zobrist.h"
+#include "hash_table.h"
 
 #define WHITE        1
 #define BLACK        -1
@@ -40,10 +41,12 @@ unsigned castling;
 unsigned enpassant_target;
 unsigned half_move_clock;
 unsigned full_move_number;
-ZOBRIST zobrist;
-ZOBRIST zobrist_history[2048];
 unsigned history[2048][4];
 unsigned total_history;
+
+ZOBRIST zobrist;
+ZOBRIST zobrist_history[2048];
+hash_table *table;
 
 void board_new();
 void board_draw();
