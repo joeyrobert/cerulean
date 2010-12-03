@@ -351,34 +351,16 @@ unsigned gen_moves(unsigned* moves) {
 
 /* updates board and board list */
 unsigned board_add(unsigned move) {
-    unsigned from, to, *king;
-    piece_list *their_pieces;
-    ZOBRIST (*my_zobrist)[128], (*their_zobrist)[128];
-
+    unsigned from, to;
     from = MOVE2FROM(move);
     to = MOVE2TO(move);
     
     history[total_history][0] = move;
     history[total_history][1] = pieces[to];         /* piece that existed there before,         */
     history[total_history][2] = enpassant_target;   /* will either be empty or -1 * turn colour */
-    history[total_history][3] = castling;    
+    history[total_history][3] = castling;
     zobrist_history[total_history] = zobrist;
     total_history++;
-
-    switch(turn) {
-    case WHITE:
-        their_pieces = &b_pieces;
-        my_zobrist = zobrist_w;
-        their_zobrist = zobrist_b;
-        king = &w_king;
-        break;
-    case BLACK:
-        their_pieces = &w_pieces;
-        my_zobrist = zobrist_b;
-        their_zobrist = zobrist_w;
-        king = &b_king;
-        break;
-    }
 
     /* REGULAR MOVE */
     if(MOVE2BITS(move) == 0) {
@@ -390,7 +372,14 @@ unsigned board_add(unsigned move) {
         board_enpassant(to - 16*turn);
     /* EN PASSANT (must be before capture) */
     } else if(move & BITS_ENPASSANT) {
-        piece_list_subtract(their_pieces, enpassant_target - turn*16);
+        switch(turn) {
+        case WHITE:
+            piece_list_subtract(&b_pieces, enpassant_target - turn*16);
+            break;
+        case BLACK:
+            piece_list_subtract(&w_pieces, enpassant_target - turn*16);
+            break;
+        }
         pieces[enpassant_target - turn*16] = EMPTY;
         colours[enpassant_target - turn*16] = EMPTY;
         move_piece(from, to);
@@ -431,18 +420,30 @@ unsigned board_add(unsigned move) {
             break;       
         }
         
-        if(turn == WHITE) {
+        
+        switch(turn) {
+        case WHITE:
             if(castling & CASTLE_WQ) castling -= CASTLE_WQ;
             if(castling & CASTLE_WK) castling -= CASTLE_WK;
-        } else {
+            break;
+        case BLACK:
             if(castling & CASTLE_BQ) castling -= CASTLE_BQ;
             if(castling & CASTLE_BK) castling -= CASTLE_BK;
+            break;
         }
     }
 
     /* Post processing */
-    if(pieces[to] == KING)
-        *king = to;
+    if(pieces[to] == KING) {
+        switch(turn) {
+        case WHITE:
+            w_king = to;
+            break;
+        case BLACK:
+            b_king = to;
+            break;
+        }
+    }
     
     if((to == 0 || from == 0 || to == 4 || from == 4) && (castling & CASTLE_WQ)) castling -= CASTLE_WQ;
     if((to == 7 || from == 7 || to == 4 || from == 4) && (castling & CASTLE_WK)) castling -= CASTLE_WK;
@@ -461,8 +462,7 @@ unsigned board_add(unsigned move) {
 }
 
 void board_subtract() {
-    unsigned from, to, *king, move, previous_piece;
-    piece_list *their_pieces;
+    unsigned from, to, move, previous_piece;
     turn = -1 * turn;
 
     total_history--;
@@ -475,24 +475,19 @@ void board_subtract() {
     from = MOVE2FROM(move);
     to = MOVE2TO(move);
 
-    
-    switch(turn) {
-    case WHITE:
-        their_pieces = &b_pieces;
-        king = &w_king;
-        break;
-    case BLACK:
-        their_pieces = &w_pieces;
-        king = &b_king;
-        break;
-    }
-
     /* REGULAR MOVE, DOUBLE PAWN */
     if(MOVE2BITS(move) == 0 || move & BITS_PAWN_DOUBLE) {
         move_piece(to, from);
     /* EN PASSANT (must be before capture) */
     } else if(move & BITS_ENPASSANT) {
-        piece_list_add(their_pieces, enpassant_target - turn*16);
+        switch(turn) {
+        case WHITE:
+            piece_list_add(&b_pieces, enpassant_target - turn*16);
+            break;
+        case BLACK:
+            piece_list_add(&w_pieces, enpassant_target - turn*16);
+            break;
+        }
         move_piece(to, from);    
         pieces[enpassant_target - turn*16] = PAWN;
         colours[enpassant_target - turn*16] = -1*turn;
@@ -501,13 +496,27 @@ void board_subtract() {
         move_piece(to, from);
         pieces[from] = PAWN;
         if(move & BITS_CAPTURE) {
-            piece_list_add(their_pieces, to);
+            switch(turn) {
+            case WHITE:
+                piece_list_add(&b_pieces, to);
+                break;
+            case BLACK:
+                piece_list_add(&w_pieces, to);
+                break;
+            }
             pieces[to] = previous_piece;
             colours[to] = -1 * turn;
         }
     /* CAPTURE */
     } else if(move & BITS_CAPTURE) {
-        piece_list_add(their_pieces, to);
+        switch(turn) {
+        case WHITE:
+            piece_list_add(&b_pieces, to);
+            break;
+        case BLACK:
+            piece_list_add(&w_pieces, to);
+            break;
+        }
         move_piece(to, from);
         pieces[to] = previous_piece;
         colours[to] = -1 * turn;
@@ -535,8 +544,16 @@ void board_subtract() {
     }
 
     /* Post processing */
-    if(pieces[from] == KING)
-        *king = from;
+    if(pieces[from] == KING) {
+        switch(turn) {
+        case WHITE:
+            w_king = from;
+            break;
+        case BLACK:
+            b_king = from;
+            break;
+        }
+    }
 }
 
 unsigned is_attacked(unsigned index, int by) {
