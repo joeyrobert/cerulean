@@ -48,6 +48,7 @@ ZOBRIST zobrist;
 ZOBRIST zobrist_history[2048];
 hash_table *table;
 
+void board_create_table();
 void board_new();
 void board_draw();
 void board_set_fen(char*);

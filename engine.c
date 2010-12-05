@@ -9,13 +9,13 @@
 
 uint64_t engine_perft(unsigned depth) {
     unsigned moves[256], count, i;
-//    hash_node* node;
+    hash_node* node;
     uint64_t total;
     if(depth == 0) return 1;
 
-//    node = hash_find(table, zobrist);
-//    if(node != NULL && node->depth == depth)
-//        return node->sub_nodes;
+    node = hash_find(table, zobrist);
+    if(node != NULL && node->depth == depth)
+        return node->sub_nodes;
     
     count = gen_moves(moves);
     total = 0;
@@ -27,7 +27,7 @@ uint64_t engine_perft(unsigned depth) {
         }
     }
 
-//    hash_add(table, zobrist, depth, total);
+    hash_add(table, zobrist, depth, total);
     return total;
 }
 
@@ -38,8 +38,8 @@ void engine_divide(int depth) {
     uint64_t total, perft;
     clock_t start, end;
 
-    printf("Divide at depth %02i\n", depth);
-    printf("------------------\n");
+    printf("Divide (depth %02i)\n", depth);
+    printf("--------------------\n");
 
     start = clock();
     count = gen_moves(moves);
@@ -49,7 +49,7 @@ void engine_divide(int depth) {
         if(board_add(moves[i])) {
             move_to_string(moves[i], str);
             perft = engine_perft(depth-1);
-            printf("%-5s   %10llu\n", str, perft);
+            printf("%-5s     %10llu\n", str, perft);
             total += perft;
             board_subtract();
         }
@@ -57,9 +57,9 @@ void engine_divide(int depth) {
     
     end = clock();
     timespan = (double)(end - start) / CLOCKS_PER_SEC;
-    printf("\nTotal   %10llu\n", total);
-    printf("Time     % 8.3fs\n", timespan);
-    printf("Moves/s % 10.1f\n", total/timespan);
+    printf("\nTotal     %10llu\n", total);
+    printf("Time      %9.3fs\n", timespan);
+    printf("Moves/s %12.1f\n", total/timespan);
 }
 
 void engine_test() {
@@ -112,6 +112,6 @@ void engine_test() {
     printf("# Total        %10u\n", total_tests);
     printf("Moves Actual   %10llu\n", actual_moves);
     printf("Moves Expected %10llu\n", expected_moves);
-    printf("Time           % 9.3fs\n", timespan);
-    printf("Moves/s        % 10.1f\n", actual_moves/timespan);
+    printf("Time           %9.3fs\n", timespan);
+    printf("Moves/s        %10.1f\n", actual_moves/timespan);
 }

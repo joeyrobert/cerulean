@@ -13,6 +13,11 @@ int delta_king[8] = {-17, -16, -15, -1, 1, 15, 16, 17};
 int delta_diagonal[4] = {15, 17, -15, -17};
 int delta_vertical[4] = {16, -16, 1, -1};
 
+void board_create_table() {
+    table = (hash_table*) malloc(sizeof(hash_table));
+    hash_new(table, 22);
+}
+
 void board_new() {
     memset(pieces,  EMPTY, 128*sizeof(unsigned));
     memset(colours, EMPTY, 128*sizeof(unsigned));
@@ -28,8 +33,6 @@ void board_new() {
     b_king = EMPTY;
     piece_list_new(&w_pieces);
     piece_list_new(&b_pieces);
-    table = (hash_table*) malloc(sizeof(hash_table));
-    hash_new(table, 15);
 }
 
 void board_set_fen(char* fen) {    
@@ -137,7 +140,7 @@ void board_draw() {
     unsigned i;
 	char ep[3];
 
-    printf("\n  +-------------------------------+\n");
+    printf("  +-------------------------------+\n");
     for(row = 7; row >= 0; row--) {
         printf("%d |", row + 1);
         for(column = 0; column < 8; column++) {
@@ -152,31 +155,28 @@ void board_draw() {
     printf("    A   B   C   D   E   F   G   H \n\n");
 
     index_to_piece(enpassant_target, ep);
-    printf("Turn:              %i\n", turn);
-    printf("Castling:          0x%X\n", castling);
-    printf("En Passant Target: %u (%s)\n", enpassant_target, ep);
-    printf("Half move number:  %u\n", half_move_clock);
-    printf("Full move number:  %u\n", full_move_number);
-    printf("Zobrist:           0x%016llX\n", zobrist);
-    printf("W King: %u, B King: %u \n", w_king, b_king);
+    printf("Turn:    %i, Castling: 0x%X, En Passant Target: %s\n", turn, castling, ep);
+    printf("Half:   %2u, Full:  %2u\n", half_move_clock, full_move_number);
+    printf("W King:  %u, B King: %u\n", w_king, b_king);
+    printf("Zobrist: 0x%016llX\n", zobrist);
 
-    printf("White pieces: ");
-    for(i = 0; i < w_pieces.count; i++) {
-        if(w_pieces.index[i] != OFF) {
-            index_to_piece(w_pieces.index[i], ep);
-            printf("%c (%s) ", piece_value_to_name(pieces[w_pieces.index[i]]), ep);
-        }
-    }
-    printf("\n");
+    //printf("White pieces: ");
+    //for(i = 0; i < w_pieces.count; i++) {
+    //    if(w_pieces.index[i] != OFF) {
+    //        index_to_piece(w_pieces.index[i], ep);
+    //        printf("%c (%s) ", piece_value_to_name(pieces[w_pieces.index[i]]), ep);
+    //    }
+    //}
+    //printf("\n");
 
-    printf("Black pieces: ");
-    for(i = 0; i < b_pieces.count; i++) {
-        if(b_pieces.index[i] != EMPTY) {
-            index_to_piece(b_pieces.index[i], ep);
-            printf("%c (%s) ", piece_value_to_name(pieces[b_pieces.index[i]]), ep);
-        }
-    }
-    printf("\n");
+    //printf("Black pieces: ");
+    //for(i = 0; i < b_pieces.count; i++) {
+    //    if(b_pieces.index[i] != EMPTY) {
+    //        index_to_piece(b_pieces.index[i], ep);
+    //        printf("%c (%s) ", piece_value_to_name(pieces[b_pieces.index[i]]), ep);
+    //    }
+    //}
+    //printf("\n");
 }
 
 unsigned gen_moves(unsigned* moves) {

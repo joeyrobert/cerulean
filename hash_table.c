@@ -22,10 +22,8 @@ hash_node* hash_find(hash_table* table, ZOBRIST key) {
 void hash_add(hash_table* table, ZOBRIST key, unsigned depth, uint64_t sub_nodes) {
     hash_node* node;
     node = &table->table[key % table->size];
-    if(node == NULL || node->depth < depth) {
-        node->key = key;
-        node->depth = depth;
-        node->sub_nodes = sub_nodes;
-    }
+    node->key = key;
+    node->depth = depth;
+    node->sub_nodes = sub_nodes;
 }
 
