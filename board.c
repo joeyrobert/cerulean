@@ -15,7 +15,7 @@ int delta_vertical[4] = {16, -16, 1, -1};
 
 void board_create_table() {
     table = (hash_table*) malloc(sizeof(hash_table));
-    hash_new(table, 22);
+    hash_new(table, 18);
 }
 
 void board_new() {
@@ -141,7 +141,6 @@ void board_set_fen(char* fen) {
 
 void board_draw() {
     int row, column;
-    unsigned i;
 	char ep[3];
 
     printf("  +-------------------------------+\n");
@@ -163,24 +162,6 @@ void board_draw() {
     printf("Half:   %2u, Full:  %2u\n", half_move_clock, full_move_number);
     printf("W King:  %u, B King: %u\n", w_king, b_king);
     printf("Zobrist: 0x%016llX\n", zobrist);
-
-    //printf("White pieces: ");
-    //for(i = 0; i < w_pieces.count; i++) {
-    //    if(w_pieces.index[i] != OFF) {
-    //        index_to_piece(w_pieces.index[i], ep);
-    //        printf("%c (%s) ", piece_value_to_name(pieces[w_pieces.index[i]]), ep);
-    //    }
-    //}
-    //printf("\n");
-
-    //printf("Black pieces: ");
-    //for(i = 0; i < b_pieces.count; i++) {
-    //    if(b_pieces.index[i] != EMPTY) {
-    //        index_to_piece(b_pieces.index[i], ep);
-    //        printf("%c (%s) ", piece_value_to_name(pieces[b_pieces.index[i]]), ep);
-    //    }
-    //}
-    //printf("\n");
 }
 
 unsigned gen_moves(unsigned* moves) {

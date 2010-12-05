@@ -26,4 +26,3 @@ void hash_add(hash_table* table, ZOBRIST key, unsigned depth, uint64_t sub_nodes
     node->depth = depth;
     node->sub_nodes = sub_nodes;
 }
-
