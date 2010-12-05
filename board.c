@@ -107,7 +107,8 @@ void board_set_fen(char* fen) {
     if(*fen != '-') {
         char ep[2]; ep[0] = *fen; fen++; ep[1] = *fen;
         enpassant_target = piece_to_index(ep);
-    }
+    } else
+        enpassant_target = NO_ENPASSANT;
 
     /* Halfmove clock */
     fen += 2;
