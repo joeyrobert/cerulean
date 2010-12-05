@@ -174,7 +174,7 @@ unsigned gen_moves(unsigned* moves) {
         last_row = 7;
         first_row = 1;
         break;
-    case BLACK:
+    default:
         list = &b_pieces;
         last_row = 0;
         first_row = 6;
