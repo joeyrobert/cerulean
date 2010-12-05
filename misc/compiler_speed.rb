@@ -1,4 +1,4 @@
-programs = ['cerulean-gcc.exe', 'cerulean-vs2010.exe', 'cerulean-icc11.exe']
+programs = ['cerulean-gcc.exe', 'cerulean-vs.exe', 'cerulean-intel.exe']
 run_times = {}
 multiple = ARGV[0].to_i
 
@@ -12,6 +12,8 @@ multiple.times do
     run_times[program] << (end_time - start_time)
   end
 end
+
+p run_times
 
 programs.each do |program|
   puts "[#{program}] Average running time: #{run_times[program].inject(:+) / multiple.to_f} s"

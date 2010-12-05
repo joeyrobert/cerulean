@@ -39,6 +39,9 @@
     <ClInclude Include="mt64.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="xboard.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="board.c">
@@ -63,6 +66,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="mt64.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="xboard.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

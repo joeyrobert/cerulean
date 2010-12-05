@@ -7,17 +7,9 @@
 #include "util.h"
 #include "hash_table.h"
 #include "zobrist.h"
+#include "xboard.h"
 
 int main() {
-    ZOBRIST what;
-    zobrist_fill();
-
-    //board_draw();
-    engine_test();
-    
-    //table = (hash_table*) malloc(sizeof(hash_table));
-    //hash_new(table, 23);
-    //
-    //zobrist_fill();
+    xboard_run();
     return 0;
 }
