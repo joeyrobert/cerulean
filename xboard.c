@@ -51,7 +51,6 @@ void xboard_run() {
         } else if(!strncmp(command, "divide", 6)) {
             value = atoi(&command[6]);
             engine_divide(value);
-            printf("\n", result);
         } else
             printf("Unknown command: %s", command);
     }
