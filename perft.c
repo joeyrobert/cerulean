@@ -7,7 +7,7 @@
 #include "util.h"
 #include "move.h"
 
-uint64_t engine_perft(unsigned depth) {
+uint64_t perft_perft(unsigned depth) {
     unsigned moves[256], count, i;
     hash_node* node;
     uint64_t total;
@@ -22,7 +22,7 @@ uint64_t engine_perft(unsigned depth) {
 
     for(i = 0; i < count; i++) {
         if(board_add(moves[i])) {
-            total += engine_perft(depth - 1);
+            total += perft_perft(depth - 1);
             board_subtract();
         }
     }
@@ -31,7 +31,7 @@ uint64_t engine_perft(unsigned depth) {
     return total;
 }
 
-void engine_divide(int depth) {
+void perft_divide(int depth) {
     char str[6];
     unsigned moves[256], count, i;
     double timespan;
@@ -48,7 +48,7 @@ void engine_divide(int depth) {
     for(i = 0; i < count; i++) {
         if(board_add(moves[i])) {
             move_to_string(moves[i], str);
-            perft = engine_perft(depth-1);
+            perft = perft_perft(depth-1);
             printf("%-5s     %10llu\n", str, perft);
             total += perft;
             board_subtract();
@@ -62,7 +62,7 @@ void engine_divide(int depth) {
     printf("Moves/s %12.1f\n", total/timespan);
 }
 
-void engine_test() {
+void perft_test() {
     FILE *file;
     char line[200], *pch, fen[200];
     int depth;
@@ -89,7 +89,7 @@ void engine_test() {
             depth = pch[1] - '0';
             expected = atol(&pch[3]);            
             printf("%i %li ", depth, expected);
-            actual = engine_perft(depth);
+            actual = perft_perft(depth);
             expected_moves += expected;
             actual_moves += actual;
             total_tests++;

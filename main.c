@@ -3,7 +3,7 @@
 #include <string.h>
 #include "board.h"
 #include "piece_list.h"
-#include "engine.h"
+#include "perft.h"
 #include "util.h"
 #include "hash_table.h"
 #include "zobrist.h"

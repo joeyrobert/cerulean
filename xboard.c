@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "xboard.h"
 #include "board.h"
-#include "engine.h"
+#include "perft.h"
 #include "util.h"
 #include "zobrist.h"
 
@@ -37,7 +37,7 @@ void xboard_run() {
         else if(!strncmp(command, "time", 4))
             time = atoi(&command[5]);
         else if(!strncmp(command, "testsuite", 9))
-            engine_test();
+            perft_test();
         else if(!strncmp(command, "setboard", 8))
             board_set_fen(&command[9]);
         else if(!strncmp(command, "otim", 4))
@@ -46,11 +46,11 @@ void xboard_run() {
             board_draw();
         else if(!strncmp(command, "perft", 5)) {
             value = atoi(&command[6]);
-            result = engine_perft(value);
+            result = perft_perft(value);
             printf("%llu\n", result);
         } else if(!strncmp(command, "divide", 6)) {
             value = atoi(&command[6]);
-            engine_divide(value);
+            perft_divide(value);
         } else
             printf("Unknown command: %s", command);
     }
