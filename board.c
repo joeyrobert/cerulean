@@ -84,31 +84,34 @@ void board_set_fen(char* fen) {
     fen += 2;
 
     /* Castling */
-    while(*fen != ' ' && *fen != '-') {
-        switch(*fen) {
-            case 'K':
-                castling |= CASTLE_WK;
-                break;
-            case 'Q':
-                castling |= CASTLE_WQ;
-                break;
-            case 'k':
-                castling |= CASTLE_BK;
-                break;
-            case 'q':
-                castling |= CASTLE_BQ;
-                break;
+    if(*fen != '-') {
+        while(*fen != ' ') {
+            switch(*fen) {
+                case 'K':
+                    castling |= CASTLE_WK;
+                    break;
+                case 'Q':
+                    castling |= CASTLE_WQ;
+                    break;
+                case 'k':
+                    castling |= CASTLE_BK;
+                    break;
+                case 'q':
+                    castling |= CASTLE_BQ;
+                    break;
+            }
+            fen++;
         }
+    } else
         fen++;
-    }
 
     /* En passant target */
+
     fen++;
     if(*fen != '-') {
         char ep[2]; ep[0] = *fen; fen++; ep[1] = *fen;
         enpassant_target = piece_to_index(ep);
-    } else
-        enpassant_target = NO_ENPASSANT;
+    }
 
     /* Halfmove clock */
     fen += 2;
