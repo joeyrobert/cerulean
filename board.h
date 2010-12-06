@@ -57,6 +57,7 @@ void board_subtract();
 ZOBRIST board_gen_zobrist();
 void board_enpassant(unsigned);
 unsigned gen_moves(unsigned*);
+unsigned gen_caps(unsigned*);
 void board_capture_piece(unsigned, unsigned);
 void move_piece(unsigned, unsigned);
 void move_piece_discreetly(unsigned, unsigned);

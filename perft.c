@@ -27,7 +27,7 @@ uint64_t perft_perft(unsigned depth) {
         }
     }
 
-    hash_add(table, zobrist, depth, total);
+    hash_add_perft(table, zobrist, depth, total);
     return total;
 }
 

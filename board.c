@@ -336,6 +336,125 @@ unsigned gen_moves(unsigned* moves) {
     return count;
 }
 
+unsigned gen_caps(unsigned* moves) {
+    piece_list *list;
+    unsigned i, j, index, count, new_move, last_row;
+
+    switch(turn) {
+    case WHITE:
+        list = &w_pieces;
+        last_row = 7;
+        break;
+    default:
+        list = &b_pieces;
+        last_row = 0;
+        break;
+    }
+
+    count = 0;
+    for(i = 0; i < list->count; i++) {
+        index = list->index[i];
+        switch(pieces[index]) {
+        case PAWN:
+            for(j = 0; j <= 2; j = j+2) {                
+                /* Captures */
+                new_move = index + (16 + j - 1)*turn;
+                if(LEGAL_MOVE(new_move) && colours[new_move] == -turn) {
+                    if(INDEX2ROW(new_move) == last_row) {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_CAPTURE | BITS_PROMOTE, QUEEN);
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_CAPTURE | BITS_PROMOTE, ROOK);
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_CAPTURE | BITS_PROMOTE, BISHOP);
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_CAPTURE | BITS_PROMOTE, KNIGHT);
+                    } else {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_CAPTURE, 0);
+                    }
+                }
+
+                /* En passant */
+                if(LEGAL_MOVE(new_move) && new_move == enpassant_target) {
+                    moves[count++] = MOVE_NEW(index, new_move, BITS_PAWN_MOVE | BITS_ENPASSANT | BITS_CAPTURE, 0);
+                }
+            }
+            break;
+        case KNIGHT:
+            for(j = 0; j < 8; j++) {
+                new_move = index + delta_knight[j];
+                if(LEGAL_MOVE(new_move) && colours[new_move] != turn) {
+                    if(colours[new_move] == -turn)
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                }
+            }
+            break;
+        case KING:
+            for(j = 0; j < 8; j++) {
+                new_move = index + delta_king[j];
+                if(LEGAL_MOVE(new_move) && colours[new_move] != turn) {
+                    if(colours[new_move] == -turn)
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                }
+            }
+            break;
+        case BISHOP:
+            for(j = 0; j < 4; j++) {
+                new_move = index;
+
+                do {
+                    new_move += delta_diagonal[j];
+                    if(!LEGAL_MOVE(new_move) || colours[new_move] == turn) break;
+              
+                    if(colours[new_move] == -turn) {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                        break;
+                    }
+                } while(1);
+            }
+            break;
+        case ROOK:
+            for(j = 0; j < 4; j++) {
+                new_move = index;
+
+                do {
+                    new_move += delta_vertical[j];
+                    if(!LEGAL_MOVE(new_move) || colours[new_move] == turn) break;
+                     
+                    if(colours[new_move] == -turn) {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                        break;
+                    }
+                } while(1);
+            }
+            break;
+        case QUEEN:
+            for(j = 0; j < 4; j++) {
+                new_move = index;
+                do {
+                    new_move += delta_diagonal[j];
+                    if(!LEGAL_MOVE(new_move) || colours[new_move] == turn) break;
+
+                    if(colours[new_move] == -turn) {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                        break;
+                    }
+                } while(1);
+                
+                new_move = index;
+                do {
+                    new_move += delta_vertical[j];
+                    if(!LEGAL_MOVE(new_move) || colours[new_move] == turn) break;
+
+                    if(colours[new_move] == -turn) {
+                        moves[count++] = MOVE_NEW(index, new_move, BITS_CAPTURE, 0);
+                        break;
+                    }
+                } while(1);
+            }
+            break;
+        }
+    }
+
+    return count;
+}
+
 /* updates board and board list */
 unsigned board_add(unsigned move) {
     unsigned from, to;

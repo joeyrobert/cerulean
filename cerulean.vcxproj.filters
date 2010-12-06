@@ -42,6 +42,12 @@
     <ClInclude Include="perft.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="evaluate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="search.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="board.c">
@@ -69,6 +75,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="perft.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="evaluate.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="search.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

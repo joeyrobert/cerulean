@@ -1,5 +1,5 @@
-#ifndef ENGINE_H 
-#define ENGINE_H
+#ifndef PERFT_H 
+#define PERFT_H
 
 #include <stdint.h>
 

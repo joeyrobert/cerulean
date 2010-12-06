@@ -7,10 +7,11 @@
 #include "perft.h"
 #include "util.h"
 #include "zobrist.h"
+#include "search.h"
 
 /* this is a very poor implementation of xboard */
 void xboard_run() {
-    char command[1000];
+    char command[1000], move_string[6];
     unsigned value, move;
     uint64_t result;
     setbuf(stdout, NULL);
@@ -44,7 +45,12 @@ void xboard_run() {
             otim = atoi(&command[5]);
         else if(!strncmp(command, "display", 7) || !strncmp(command, "draw", 4))
             board_draw();
-        else if(!strncmp(command, "perft", 5)) {
+        else if(!strncmp(command, "go", 2)) {
+            move = think(time);
+            board_add(move);
+            move_to_string(move, move_string);
+            printf("move %s\n", move_string);
+        } else if(!strncmp(command, "perft", 5)) {
             value = atoi(&command[6]);
             result = perft_perft(value);
             printf("%llu\n", result);
