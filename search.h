@@ -8,5 +8,6 @@ uint64_t nodes_searched;
 int quiesc_search(int, int);
 int alphabeta_search(int, int, int);
 unsigned think(int);
+void moves_sort(unsigned* moves, unsigned move_count);
 
 #endif

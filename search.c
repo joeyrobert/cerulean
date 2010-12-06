@@ -6,6 +6,7 @@
 #include "board.h"
 #include "evaluate.h"
 #include "util.h"
+#include "move.h"
 
 int quiesc_search(int alpha, int beta) {
     unsigned moves[256], count, i;
@@ -53,8 +54,9 @@ int alphabeta_search(int depth, int alpha, int beta) {
         return score;
     }
     
-    // TODO: Put captures at the top of the list + additional move ordering.
+    // TODO: Additional move ordering;
     count = gen_moves(moves);
+    moves_sort(moves, count);
 
     for(i = 0; i < count; i++) {
         if (!board_add(moves[i])) continue;
@@ -102,10 +104,25 @@ unsigned think(int total_centiseconds) {
         elapsed_centiseconds = (double)(end - start) / (CLOCKS_PER_SEC * 100);
         printf("%i %i %.5f %llu %s\n", i, score, elapsed_centiseconds, nodes_searched, move_strings);
 
-        if (elapsed_centiseconds > 0.1 * total_centiseconds)        break;
+        if (elapsed_centiseconds > 0.02 * total_centiseconds && i > 5)        break;
         if (score >= INFINITE - 1000 || score <= -INFINITE + 1000)  break;
     }
 
     return pv[0];
+}
+
+/* at the moment, this should place captures on the top */
+void moves_sort(unsigned* moves, unsigned move_count) {
+    unsigned beginning, tmp, i;
+    beginning = 0;
+
+    for(i = 0; i < move_count; i++) {
+        if(moves[i] & BITS_CAPTURE) {
+            tmp = moves[beginning];
+            moves[beginning] = moves[i];
+            moves[i] = tmp;
+            beginning++;
+        }
+    }
 }
 
