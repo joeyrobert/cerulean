@@ -25,9 +25,14 @@ void xboard_run() {
         fgets(command, 1000, stdin);
         move = find_move(command);
         
-        if(move)
+        if(move) {
             board_add(move);
-        else if(!strncmp(command, "new", 3))
+            
+            move = think(time);
+            board_add(move);
+            move_to_string(move, move_string);
+            printf("move %s\n", move_string);
+        } else if(!strncmp(command, "new", 3))
             board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         else if(!strncmp(command, "quit", 4) || !strncmp(command, "exit", 4))
             exit(0);
@@ -57,6 +62,22 @@ void xboard_run() {
         } else if(!strncmp(command, "divide", 6)) {
             value = atoi(&command[6]);
             perft_divide(value);
+        } else if(!strncmp(command, "help", 4)) {
+            printf("Commands\n");
+            printf("--------\n");
+            printf("display         Draws the board\n");
+            printf("divide n        Divides the current board to a depth of n\n");
+            printf("e2e4            Moves from the current position, and thinks\n");
+            printf("go              Forces the engine to think\n");
+            printf("new             Sets up the default board position\n");
+            printf("setboard [FEN]  Sets the board to whatever you want\n");
+            printf("testsuite       Runs the perft test suite\n");
+            printf("white           Sets the active colour to WHITE\n");
+            printf("black           Sets the active colour to BLACK\n");
+            printf("time [INT]      Sets engine's time (in centiseconds)\n");
+            printf("otim [INT]      Sets opponent's time (in centiseconds)\n");
+            printf("exit            Exits the menu\n");
+            printf("help            Gets you this magical menu\n\n");
         } else
             printf("Unknown command: %s", command);
     }

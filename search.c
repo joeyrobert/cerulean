@@ -104,8 +104,8 @@ unsigned think(int total_centiseconds) {
         elapsed_centiseconds = (double)(end - start) / (CLOCKS_PER_SEC * 100);
         printf("%i %i %.5f %llu %s\n", i, score, elapsed_centiseconds, nodes_searched, move_strings);
 
-        if (elapsed_centiseconds > 0.02 * total_centiseconds && i > 5)        break;
-        if (score >= INFINITE - 1000 || score <= -INFINITE + 1000)  break;
+        if (elapsed_centiseconds > 0.0001 * total_centiseconds || i >= 4) break;
+        if (score >= INFINITE - 1000 || score <= -INFINITE + 1000) break;
     }
 
     return pv[0];
@@ -125,4 +125,3 @@ void moves_sort(unsigned* moves, unsigned move_count) {
         }
     }
 }
-
