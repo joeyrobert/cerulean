@@ -7,7 +7,7 @@
 void hash_new(hash_table* table, unsigned size) {
     table->size = 2<<size;
     table->table = (hash_node*) malloc(sizeof(hash_node)*(table->size));
-    memset(table->table, (uint64_t)NULL, sizeof(uint64_t)*(table->size));
+    memset(table->table, NULL, sizeof(hash_node)*(table->size));
 }
 
 hash_node* hash_find(hash_table* table, ZOBRIST key) {

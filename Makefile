@@ -1,5 +1,5 @@
-all: board.o piece_list.o engine.o util.o hash_table.o zobrist.o mt64.o xboard.o main.o
-	gcc -Wall -std=c99 -pedantic -O2 -o cerulean board.o piece_list.o engine.o util.o hash_table.o zobrist.o mt64.o xboard.o main.o
+all: board.o piece_list.o search.o util.o hash_table.o zobrist.o mt64.o xboard.o perft.o evaluate.o main.o
+	gcc -Wall -std=c99 -pedantic -O2 -o cerulean board.o piece_list.o search.o util.o hash_table.o zobrist.o mt64.o xboard.o perft.o evaluate.o main.o
 
 board.o: board.c board.h move.h piece_list.h piece_list.c
 	gcc -Wall -std=c99 -pedantic -O2 -c board.c
@@ -22,11 +22,17 @@ main.o: main.c
 util.o: util.c
 	gcc -Wall -std=c99 -pedantic -O2 -c util.c
 
-engine.o: engine.h engine.c
-	gcc -Wall -std=c99 -pedantic -O2 -c engine.c
+search.o: search.h search.c
+	gcc -Wall -std=c99 -pedantic -O2 -c search.c
+
+perft.o: perft.h perft.c
+	gcc -Wall -std=c99 -pedantic -O2 -c perft.c
 
 xboard.o: xboard.c xboard.h
 	gcc -Wall -std=c99 -pedantic -O2 -c xboard.c
+
+evaluate.o: evaluate.c evaluate.h
+	gcc -Wall -std=c99 -pedantic -O2 -c evaluate.c
 
 clean: 
 	rm *.o cerulean
