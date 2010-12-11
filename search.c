@@ -12,7 +12,7 @@ int quiesc_search(int alpha, int beta) {
     unsigned moves[256], count, i;
     int stand_pat, score;
 
-    stand_pat = static_evaluation();
+    stand_pat = turn*static_evaluation();
 
     if (stand_pat >= beta)
         return beta;
@@ -79,34 +79,30 @@ int alphabeta_search(int depth, int alpha, int beta) {
 }
 
 unsigned think(int total_centiseconds) {
-    int i, j, score;
+    int depth, j, score;
     clock_t start, end;
     double elapsed_centiseconds;
     char move_strings[384], move_string[6];
     pv_depth = 0;
     nodes_searched = 0;
+    
+    depth = 4;
 
     start = clock();
-    for(i = 1; ; i++) {
-        memset(pv, 0, 64);
-        memset(move_strings, '\0', 384);
-        score = alphabeta_search(i, -INFINITE, INFINITE);
-        end = clock();
+    memset(pv, 0, 64);
+    memset(move_strings, '\0', 384);
+    score = alphabeta_search(depth, -INFINITE, INFINITE);
+    end = clock();
         
-        for(j = 0; ; j++) {
-            if(pv[j] == 0) break;
-            move_to_string(pv[j], move_string);
-            strcat(move_strings, move_string);
-            strcat(move_strings, " ");
-        }
-
-        end = clock();
-        elapsed_centiseconds = (double)(end - start) / (CLOCKS_PER_SEC * 100);
-        printf("%i %i %.5f %llu %s\n", i, score, elapsed_centiseconds, nodes_searched, move_strings);
-
-        if (elapsed_centiseconds > 0.0001 * total_centiseconds || i >= 4) break;
-        if (score >= INFINITE - 1000 || score <= -INFINITE + 1000) break;
+    for(j = 0; ; j++) {
+        if(pv[j] == 0) break;
+        move_to_string(pv[j], move_string);
+        strcat(move_strings, move_string);
+        strcat(move_strings, " ");
     }
+
+    elapsed_centiseconds = (double)(end - start) / (CLOCKS_PER_SEC * 100);
+    printf("%i %i %.5f %llu %s\n", depth, score, elapsed_centiseconds, nodes_searched, move_strings);
 
     return pv[0];
 }
@@ -117,7 +113,7 @@ void moves_sort(unsigned* moves, unsigned move_count) {
     beginning = 0;
 
     for(i = 0; i < move_count; i++) {
-        if(moves[i] & BITS_CAPTURE) {
+        if(moves[i] & BITS_CAPTURE || moves[i] & BITS_PROMOTE || moves[i] & BITS_CASTLE) {
             tmp = moves[beginning];
             moves[beginning] = moves[i];
             moves[i] = tmp;
