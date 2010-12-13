@@ -88,9 +88,9 @@ void move_to_short_algebraic(unsigned move, char* str) {
         str[loc++] = toupper(piece_value_to_name(pieces[from]));
 
     /* Source square is ambigious */
-    if(move & BITS_CAPTURE && pieces[from] == PAWN)
+    if(move & BITS_CAPTURE && pieces[from] == PAWN) {
         str[loc++] = from_square[0];
-    else {
+    } else {
         for(i = 0; i < count; i++) {
             /* Skip identical move */
             if(move == moves[i] || move & BITS_PROMOTE)
@@ -110,6 +110,8 @@ void move_to_short_algebraic(unsigned move, char* str) {
                     str[loc++] = from_square[0];
                     str[loc++] = from_square[1];
                 }
+
+                break;
             }
         }
     }
