@@ -5,6 +5,5 @@
 
 uint64_t perft_perft(unsigned depth);
 void perft_divide(int);
-void perft_test();
 
 #endif

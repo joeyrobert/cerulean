@@ -61,7 +61,7 @@ void move_to_string(unsigned move, char* str) {
 
 /* Converts a move to short algebraic notation. */
 void move_to_short_algebraic(unsigned move, char* str) {
-    unsigned from, to, promote, loc, count, moves[256], i;
+    unsigned from, to, promote, loc, count, moves[256], i, check;
     unsigned other_from, other_to;
     char to_square[5], from_square[5];
 
@@ -122,10 +122,26 @@ void move_to_short_algebraic(unsigned move, char* str) {
     str[loc++] = to_square[0];
     str[loc++] = to_square[1];
 
+    /* Promotions */
     if(move & BITS_PROMOTE) {
         str[loc++] = '=';
         str[loc++] = toupper(piece_value_to_name(promote));
     }
+
+    /* Board status (checkmate/stalemate) */
+    board_add(move);
+    
+    count = gen_moves(moves); /* 2nd ply moves */
+    check = is_in_check(turn);
+    
+    if(count == 0 && check)
+        str[loc++] = '#';
+    else if(count == 0)
+        str[loc++] = '=';
+    else if(check)
+        str[loc++] = '+';
+
+    board_subtract();
 
     str[loc++] = '\0';
 }

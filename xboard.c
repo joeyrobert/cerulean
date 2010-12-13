@@ -5,6 +5,7 @@
 #include "xboard.h"
 #include "board.h"
 #include "perft.h"
+#include "test.h"
 #include "util.h"
 #include "zobrist.h"
 #include "search.h"

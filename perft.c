@@ -6,6 +6,7 @@
 #include "board.h"
 #include "util.h"
 #include "move.h"
+#include "perft.h"
 
 uint64_t perft_perft(unsigned depth) {
     unsigned moves[256], count, i;
@@ -61,58 +62,4 @@ void perft_divide(int depth) {
     printf("\nTotal     %10llu\n", total);
     printf("Time      %9.3fs\n", timespan);
     printf("Moves/s %12.1f\n", total/timespan);
-}
-
-void perft_test() {
-    FILE *file;
-    char line[200], *pch, fen[200];
-    int depth;
-    uint64_t actual;
-    long expected;
-    unsigned total_tests, passed_tests;
-    uint64_t expected_moves, actual_moves;    
-    clock_t start, end;
-    double timespan;
-
-    file = fopen("suites/perftsuite.epd", "r");
-    total_tests = 0; passed_tests = 0;
-    expected_moves = 0; actual_moves = 0;
-    
-    start = clock();
-    while(fgets(line, 200, file) != NULL) {
-        pch = strtok(line, ";");
-        strcpy (fen, pch);
-        printf("%s\n", pch);
-        pch = strtok (NULL, ";");
-
-        while(pch != NULL) {
-            board_set_fen(fen);
-            depth = pch[1] - '0';
-            expected = atol(&pch[3]);            
-            printf("%i %li ", depth, expected);
-            actual = perft_perft(depth);
-            expected_moves += expected;
-            actual_moves += actual;
-            total_tests++;
-
-            if(expected == actual) {
-                printf(".\n");
-                passed_tests++;
-            } else
-                printf("(received %llu)\n", actual);
-
-            pch = strtok (NULL, ";");
-        }
-        printf("\n");
-    }
-
-    fclose(file);
-    end = clock();
-    timespan = (double)(end - start) / CLOCKS_PER_SEC;
-    printf("# Passed       %10u\n", passed_tests);
-    printf("# Total        %10u\n", total_tests);
-    printf("Moves Actual   %10llu\n", actual_moves);
-    printf("Moves Expected %10llu\n", expected_moves);
-    printf("Time           %9.3fs\n", timespan);
-    printf("Moves/s        %10.1f\n", actual_moves/timespan);
 }

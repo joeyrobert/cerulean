@@ -71,6 +71,7 @@
     <ClInclude Include="mt64.h" />
     <ClInclude Include="piece_list.h" />
     <ClInclude Include="search.h" />
+    <ClInclude Include="test.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="xboard.h" />
     <ClInclude Include="zobrist.h" />
@@ -84,6 +85,7 @@
     <ClCompile Include="mt64.c" />
     <ClCompile Include="piece_list.c" />
     <ClCompile Include="search.c" />
+    <ClCompile Include="test.c" />
     <ClCompile Include="util.c" />
     <ClCompile Include="xboard.c" />
     <ClCompile Include="zobrist.c" />
