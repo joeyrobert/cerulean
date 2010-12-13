@@ -111,6 +111,7 @@ void search_test() {
 
         printf("\n");
     }
+    fclose(file);
 
     printf("# Passed       %10u\n", passed_tests);
     printf("# Total        %10u\n", total_tests);
