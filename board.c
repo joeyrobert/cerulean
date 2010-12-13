@@ -825,8 +825,7 @@ void board_enpassant(unsigned new_enpassant_target) {
 }
 
 /* This is NOT foolproof. Different boards may appear identical.
-Identical boards will appear identical though.
-*/
+Identical boards will appear identical though. */
 unsigned board_debug() {
     unsigned i, row, column, sum;
     sum = 0;

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "util.h"
 #include "move.h"
 #include "board.h"
@@ -56,6 +57,77 @@ void move_to_string(unsigned move, char* str) {
         str[5] = '\0';
     } else
         str[4] = '\0';
+}
+
+/* Converts a move to short algebraic notation. */
+void move_to_short_algebraic(unsigned move, char* str) {
+    unsigned from, to, promote, loc, count, moves[256], i;
+    unsigned other_from, other_to;
+    char to_square[5], from_square[5];
+
+    loc = 0;
+    from = MOVE2FROM(move);
+    to = MOVE2TO(move);
+    promote = MOVE2PROMOTE(move);
+    
+    if(move & BITS_CASTLE) {
+        if(to == 2 || to == 114)
+            strcpy(str, "O-O-O");
+        else            
+            strcpy(str, "O-O");
+        return;
+    }
+
+    /* Assumed knowledge */
+    index_to_piece(to, to_square);
+    index_to_piece(from, from_square);
+    count = gen_moves(moves);
+
+    /* Initial piece */
+    if(pieces[from] != PAWN && pieces[from] != EMPTY)
+        str[loc++] = toupper(piece_value_to_name(pieces[from]));
+
+    /* Source square is ambigious */
+    if(move & BITS_CAPTURE && pieces[from] == PAWN)
+        str[loc++] = from_square[0];
+    else {
+        for(i = 0; i < count; i++) {
+            /* Skip identical move */
+            if(move == moves[i])
+                continue;
+
+            other_from = MOVE2FROM(moves[i]);
+            other_to = MOVE2TO(moves[i]);
+            
+            /* Add file or rank information if other moves have the 
+            same destination and piece type. */
+            if(pieces[from] == pieces[other_from] && to == other_to) {
+                if(INDEX2COLUMN(from) != INDEX2COLUMN(other_from))
+                    str[loc++] = from_square[0];
+                else if(INDEX2ROW(from) != INDEX2ROW(other_from))
+                    str[loc++] = from_square[1];
+                else {
+                    str[loc++] = from_square[0];
+                    str[loc++] = from_square[1];
+                }
+            }
+        }
+    }
+
+    /* Capture squares */
+    if(move & BITS_CAPTURE)
+        str[loc++] = 'x';
+    
+    /* Destination square */
+    str[loc++] = to_square[0];
+    str[loc++] = to_square[1];
+
+    if(move & BITS_PROMOTE) {
+        str[loc++] = '=';
+        str[loc++] = toupper(piece_value_to_name(promote));
+    }
+
+    str[loc++] = '\0';
 }
 
 void describe_moves(unsigned *moves, unsigned move_count) {

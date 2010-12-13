@@ -32,7 +32,7 @@ uint64_t perft_perft(unsigned depth) {
 }
 
 void perft_divide(int depth) {
-    char str[6];
+    char str[10];
     unsigned moves[256], count, i;
     double timespan;
     uint64_t total, perft;
@@ -47,11 +47,12 @@ void perft_divide(int depth) {
 
     for(i = 0; i < count; i++) {
         if(board_add(moves[i])) {
-            move_to_string(moves[i], str);
             perft = perft_perft(depth-1);
-            printf("%-5s     %10llu\n", str, perft);
-            total += perft;
             board_subtract();
+            total += perft;
+
+            move_to_string(moves[i], str);
+            printf("%-5s     %10llu\n", str, perft);
         }
     }
     
