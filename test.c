@@ -7,6 +7,7 @@
 #include "util.h"
 #include "move.h"
 #include "perft.h"
+#include "search.h"
 
 void perft_test() {
     FILE *file;
@@ -64,30 +65,50 @@ void perft_test() {
 
 void search_test() {
     FILE *file;
-    char line[200], *pch, fen[200];
-    unsigned total_tests, passed_tests;
+    char line_tmp[200], line[200], *pch, fen[200], id[200];
+    char expected_move_string[10], actual_move_string[10];
+    unsigned total_tests, passed_tests, i;
+    unsigned actual_move, expected_move;
 
     file = fopen("suites/ecmgcp.epd", "r");
     total_tests = 0; passed_tests = 0;
     
-    while(fgets(line, 200, file) != NULL) {
+    while(fgets(line_tmp, 200, file) != NULL) {        
+        total_tests++;
+
+        /* Get the best move */
+        strcpy(line, line_tmp);
+        pch = strtok(line, " ");
+        for(i = 0; i < 5; i++)
+            pch = strtok(NULL, " ");
+        strcpy(expected_move_string, pch);
+        expected_move_string[strlen(expected_move_string) - 1] = '\0';
+        
+        /* Get the fen board */
+        strcpy(line, line_tmp);
         pch = strtok(line, ";");
-        strcpy (fen, pch);
-        printf("%s\n", pch);
-        pch = strtok (NULL, ";");
+        strcpy(fen, pch);
 
-        while(pch != NULL) {
-            board_set_fen(fen); 
-            total_tests++;
+        /* Get the fen board */
+        strcpy(line, line_tmp);
+        pch = strtok(line, "\"");
+        pch = strtok(NULL, "\"");
+        strcpy(id, pch);
 
-            if(1) {
-                printf(".\n");
-                passed_tests++;
-            } else
-                printf("FUCK");
-
-            pch = strtok (NULL, ";");
+        board_set_fen(fen);
+        actual_move = search_root();
+        expected_move = find_short_algebraic_move(expected_move_string);
+        
+        printf("%-15s ", id);
+        printf("%-10s ", expected_move_string);
+        if(actual_move == expected_move) {
+            printf(".");
+            passed_tests++;
+        } else {
+            move_to_short_algebraic(actual_move, actual_move_string);
+            printf("(received %s)", actual_move_string);
         }
+
         printf("\n");
     }
 

@@ -43,8 +43,10 @@ void xboard_run() {
             turn = BLACK;
         else if(!strncmp(command, "time", 4))
             time = atoi(&command[5]);
-        else if(!strncmp(command, "testsuite", 9))
+        else if(!strncmp(command, "perfttest", 9))
             perft_test();
+        else if(!strncmp(command, "searchtest", 10))
+            search_test();
         else if(!strncmp(command, "setboard", 8))
             board_set_fen(&command[9]);
         else if(!strncmp(command, "otim", 4))

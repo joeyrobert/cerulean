@@ -12,5 +12,6 @@ void move_to_string(unsigned, char*);
 void move_to_short_algebraic(unsigned, char*);
 void describe_moves(unsigned*, unsigned);
 unsigned find_move(char*);
+unsigned find_short_algebraic_move(char*);
 
 #endif

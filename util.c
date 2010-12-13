@@ -63,7 +63,7 @@ void move_to_string(unsigned move, char* str) {
 void move_to_short_algebraic(unsigned move, char* str) {
     unsigned from, to, promote, loc, count, moves[256], i, check;
     unsigned other_from, other_to;
-    char to_square[5], from_square[5];
+    char to_square[3], from_square[3];
 
     loc = 0;
     from = MOVE2FROM(move);
@@ -93,7 +93,7 @@ void move_to_short_algebraic(unsigned move, char* str) {
     else {
         for(i = 0; i < count; i++) {
             /* Skip identical move */
-            if(move == moves[i])
+            if(move == moves[i] || move & BITS_PROMOTE)
                 continue;
 
             other_from = MOVE2FROM(moves[i]);
@@ -130,7 +130,7 @@ void move_to_short_algebraic(unsigned move, char* str) {
 
     /* Board status (checkmate/stalemate) */
     board_add(move);
-    
+
     count = gen_moves(moves); /* 2nd ply moves */
     check = is_in_check(turn);
     
@@ -140,7 +140,7 @@ void move_to_short_algebraic(unsigned move, char* str) {
         str[loc++] = '=';
     else if(check)
         str[loc++] = '+';
-
+    
     board_subtract();
 
     str[loc++] = '\0';
@@ -162,6 +162,22 @@ unsigned find_move(char* move_string) {
 
     for(i = 0; i < move_count; i++) {
         move_to_string(moves[i], str);
+        if(strncmp(str, move_string, strlen(str)) == 0)
+            return moves[i];
+    }
+
+    return EMPTY;
+}
+
+/* Returns a move if it exists. Otherwise results EMPTY */
+unsigned find_short_algebraic_move(char* move_string) {
+    unsigned i, count, moves[256];
+    char str[10];
+    count = gen_moves(moves);
+
+    for(i = 0; i < count; i++) {
+        move_to_short_algebraic(moves[i], str);
+
         if(strncmp(str, move_string, strlen(str)) == 0)
             return moves[i];
     }
