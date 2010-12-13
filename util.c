@@ -62,7 +62,7 @@ void move_to_string(unsigned move, char* str) {
 /* Converts a move to short algebraic notation. */
 void move_to_short_algebraic(unsigned move, char* str) {
     unsigned from, to, promote, loc, count, moves[256], i, check;
-    unsigned other_from, other_to;
+    unsigned other_from, other_to, add_row, add_column;
     char to_square[3], from_square[3];
 
     loc = 0;
@@ -82,6 +82,8 @@ void move_to_short_algebraic(unsigned move, char* str) {
     index_to_piece(to, to_square);
     index_to_piece(from, from_square);
     count = gen_moves(moves);
+    add_row = 0;
+    add_column = 0;
 
     /* Initial piece */
     if(pieces[from] != PAWN && pieces[from] != EMPTY)
@@ -103,18 +105,21 @@ void move_to_short_algebraic(unsigned move, char* str) {
             same destination and piece type. */
             if(pieces[from] == pieces[other_from] && to == other_to) {
                 if(INDEX2COLUMN(from) != INDEX2COLUMN(other_from))
-                    str[loc++] = from_square[0];
+                    add_column = 1;
                 else if(INDEX2ROW(from) != INDEX2ROW(other_from))
-                    str[loc++] = from_square[1];
+                    add_row = 1;
                 else {
-                    str[loc++] = from_square[0];
-                    str[loc++] = from_square[1];
+                    add_row = 1;
+                    add_column = 1;
                 }
-
-                break;
             }
         }
     }
+
+    /* Add flags. This is so we can scale with 3 or more identical pieces
+       attacking the same square */
+    if(add_column) str[loc++] = from_square[0];
+    if(add_row) str[loc++] = from_square[1];
 
     /* Capture squares */
     if(move & BITS_CAPTURE)
