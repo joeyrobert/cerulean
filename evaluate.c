@@ -1,7 +1,15 @@
 #include "evaluate.h"
 #include "board.h"
 
-unsigned piece_values[] = {0, 100, 315, 320, 500, 950, INFINITE};
+unsigned piece_values[] = {
+    0,          /* EMPTY */
+    100,        /* PAWN */
+    315,        /* BISHOP */
+    320,        /* KNIGHT */
+    500,        /* ROOK */
+    975,        /* QUEEN */
+    INFINITE    /* KING */
+};
 
 int static_evaluation() {
     unsigned i, result;

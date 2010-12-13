@@ -14,8 +14,9 @@ int delta_diagonal[4] = {15, 17, -15, -17};
 int delta_vertical[4] = {16, -16, 1, -1};
 
 void board_create_table() {
+    int size = 15; /* 2^15 */
     table = (hash_table*) malloc(sizeof(hash_table));
-    hash_new(table, 20);
+    hash_new(table, size);
 }
 
 void board_new() {

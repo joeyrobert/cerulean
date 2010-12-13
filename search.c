@@ -1,3 +1,10 @@
+/* search.c
+ *
+ * References:
+ *      http://chessprogramming.wikispaces.com/Alpha-Beta
+ *      http://web.archive.org/web/20070822204120/www.seanet.com/~brucemo/topics/hashing.htm
+ */
+
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -35,13 +42,17 @@ int qsearch(int alpha, int beta) {
 
 int search(int depth, int alpha, int beta) {
     unsigned moves[256], count, i, check;
-    int score;
+    int score, default_hash;
     hash_node *node;
+
+    default_hash = HASH_ALPHA;
 
     /* Check for end of search */
     if (depth == 0) {
         nodes_searched++;
-        return qsearch(alpha, beta);
+        score = qsearch(alpha, beta);
+        hash_add_move(table, zobrist, depth, score, HASH_EXACT);
+        return score;
     }
 
     /* Check the Transposition table */
@@ -52,21 +63,30 @@ int search(int depth, int alpha, int beta) {
             alpha = MAX(alpha, node->score);
             break;
         case HASH_BETA:
-            beta = MIN(alpha, node->score);
+            beta = MIN(beta, node->score);
             break;
         case HASH_EXACT:
             return node->score;
         }
     }
-    
-    /* Move ordering */
-    count = gen_moves(moves);
-    moves_sort(moves, count);
 
     /* Check extension */
     check = is_in_check(turn);
     if(check)
         depth++;
+    
+    /* Move generation */
+    count = gen_moves(moves);
+
+    /* Checkmate or Stalemate */
+    if(count == 0) {
+        if(check)
+            return -INFINITE;
+        return 0;
+    }
+    
+    /* Move ordering */
+    moves_sort(moves, count);
 
     for(i = 0; i < count; i++) {
         if (!board_add(moves[i])) continue;
@@ -75,23 +95,18 @@ int search(int depth, int alpha, int beta) {
 
         if(score >= beta) {
             /* beta cutoff */
+            hash_add_move(table, zobrist, depth, beta, HASH_BETA);
             return beta;
         }
 
         if(score > alpha) {
             /* new best score */
+            default_hash = HASH_EXACT;
             alpha = score;
         }
-
     }
 
-    /* checkmate or stalemate */
-    if(count == 0) {
-        if(check)
-            return -INFINITE;
-        return 0;
-    }
-
+    hash_add_move(table, zobrist, depth, alpha, default_hash);
     return alpha;
 }
 
