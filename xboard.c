@@ -28,7 +28,7 @@ void xboard_run() {
         if(move) {
             board_add(move);
             
-            move = think(time);
+            move = search_root();
             board_add(move);
             move_to_string(move, move_string);
             printf("move %s\n", move_string);
@@ -51,7 +51,7 @@ void xboard_run() {
         else if(!strncmp(command, "display", 7) || !strncmp(command, "draw", 4))
             board_draw();
         else if(!strncmp(command, "go", 2)) {
-            move = think(time);
+            move = search_root();
             board_add(move);
             move_to_string(move, move_string);
             printf("move %s\n", move_string);

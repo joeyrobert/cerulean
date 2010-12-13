@@ -12,13 +12,13 @@ typedef struct {
     ZOBRIST key;
     uint64_t sub_nodes;
     unsigned move;
-    unsigned type; /* HASH_ALPHA, HASH_BETA or HASH_EXACT */
+    unsigned type;      /* HASH_ALPHA, HASH_BETA or HASH_EXACT */
     int score;
 } hash_node;
 
 typedef struct {
     uint64_t size;
-    hash_node *table;      /* this can grow */
+    hash_node *table;   /* this can grow */
 } hash_table;
 
 void hash_new(hash_table*, unsigned);

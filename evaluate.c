@@ -13,5 +13,5 @@ int static_evaluation() {
     for(i = 0; i < b_pieces.count; i++)
         result -= piece_values[pieces[b_pieces.index[i]]];
 
-    return result;
+    return turn*result;
 }

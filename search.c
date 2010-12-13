@@ -1,5 +1,4 @@
 #include <string.h>
-#include <time.h>
 #include <stdio.h>
 #include <stdint.h>
 #include "search.h"
@@ -8,11 +7,11 @@
 #include "util.h"
 #include "move.h"
 
-int quiesc_search(int alpha, int beta) {
+int qsearch(int alpha, int beta) {
     unsigned moves[256], count, i;
     int stand_pat, score;
 
-    stand_pat = turn*static_evaluation();
+    stand_pat = static_evaluation();
 
     if (stand_pat >= beta)
         return beta;
@@ -22,7 +21,7 @@ int quiesc_search(int alpha, int beta) {
     count = gen_caps(moves);
     for(i = 0; i < count; i++) {
         if (!board_add(moves[i])) continue;
-        score = -quiesc_search(-beta, -alpha);
+        score = -qsearch(-beta, -alpha);
         board_subtract();
 
         if (score >= beta)
@@ -34,77 +33,100 @@ int quiesc_search(int alpha, int beta) {
     return alpha;
 }
 
-int alphabeta_search(int depth, int alpha, int beta) {
-    unsigned moves[256], count, i;
+int search(int depth, int alpha, int beta) {
+    unsigned moves[256], count, i, check;
     int score;
-    //hash_node* node;
+    hash_node *node;
 
-    //node = hash_find(table, zobrist);
-    //if(node != NULL && node->depth >= depth) {
-    //    if (node->type == HASH_EXACT ||
-    //        node->type == HASH_ALPHA && node->score <= alpha ||
-    //        node->type == HASH_BETA  && node->score >= beta)
-    //        return node->score;
-    //}
-
-    // Check for end of search or terminal node
-    if (depth == 0 || pieces[w_king] == EMPTY || pieces[b_king] == EMPTY) {
+    /* Check for end of search */
+    if (depth == 0) {
         nodes_searched++;
-        score = quiesc_search(alpha, beta);
-        return score;
+        return qsearch(alpha, beta);
+    }
+
+    /* Check the Transposition table */
+    node = hash_find(table, zobrist);
+    if(node != NULL && node->depth >= depth) {
+        switch(node->type) {
+        case HASH_ALPHA:
+            alpha = MAX(alpha, node->score);
+            break;
+        case HASH_BETA:
+            beta = MIN(alpha, node->score);
+            break;
+        case HASH_EXACT:
+            return node->score;
+        }
     }
     
-    // TODO: Additional move ordering;
+    /* Move ordering */
     count = gen_moves(moves);
     moves_sort(moves, count);
 
+    /* Check extension */
+    check = is_in_check(turn);
+    if(check)
+        depth++;
+
     for(i = 0; i < count; i++) {
         if (!board_add(moves[i])) continue;
-        pv_depth++;
-        score = -alphabeta_search(depth - 1, -beta, -alpha);
-        pv_depth--;
+        score = -search(depth - 1, -beta, -alpha);
         board_subtract();
 
-        if (score > alpha) {
-            alpha = score;
-            pv[pv_depth] = moves[i];
+        if(score >= beta) {
+            /* beta cutoff */
+            return beta;
         }
 
-        if (beta <= alpha) {
-            break;
+        if(score > alpha) {
+            /* new best score */
+            alpha = score;
         }
+
+    }
+
+    /* checkmate or stalemate */
+    if(count == 0) {
+        if(check)
+            return -INFINITE;
+        return 0;
     }
 
     return alpha;
 }
 
-unsigned think(int total_centiseconds) {
-    int depth, j, score;
-    clock_t start, end;
-    double elapsed_centiseconds;
-    char move_strings[384], move_string[6];
-    pv_depth = 0;
+unsigned search_root() {
+    int depth, i, score, best_score, count;
+    unsigned moves[256], best_move;
     nodes_searched = 0;
     
+    /* Depth is fixed for now */
     depth = 4;
+    
+    /* Move ordering */
+    count = gen_moves(moves);
+    moves_sort(moves, count);
 
-    start = clock();
-    memset(pv, 0, 64);
-    memset(move_strings, '\0', 384);
-    score = alphabeta_search(depth, -INFINITE, INFINITE);
-    end = clock();
-        
-    for(j = 0; ; j++) {
-        if(pv[j] == 0) break;
-        move_to_string(pv[j], move_string);
-        strcat(move_strings, move_string);
-        strcat(move_strings, " ");
+    best_score = -INFINITE;
+    best_move = 0;
+    
+    for(i = 0; i < count; i++) {
+        if (!board_add(moves[i])) continue;
+        score = -search(depth - 1, -INFINITE, INFINITE);
+        board_subtract();
+
+        /* sometimes king related moves don't
+        override the check at the bottom */
+        if(best_move == 0)
+            best_move = moves[i];
+
+        if(score > best_score) {
+            best_move = moves[i];
+            best_score = score;
+        }
     }
 
-    elapsed_centiseconds = (double)(end - start) / (CLOCKS_PER_SEC * 100);
-    printf("%i %i %.5f %llu %s\n", depth, score, elapsed_centiseconds, nodes_searched, move_strings);
-
-    return pv[0];
+    return best_move;
 }
 
 /* at the moment, this should place captures on the top */
@@ -113,7 +135,7 @@ void moves_sort(unsigned* moves, unsigned move_count) {
     beginning = 0;
 
     for(i = 0; i < move_count; i++) {
-        if(moves[i] & BITS_CAPTURE || moves[i] & BITS_PROMOTE || moves[i] & BITS_CASTLE) {
+        if(moves[i] & BITS_CAPTURE || moves[i] & BITS_PROMOTE) {
             tmp = moves[beginning];
             moves[beginning] = moves[i];
             moves[i] = tmp;

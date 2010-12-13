@@ -1,13 +1,11 @@
 #ifndef SEARCH_H 
 #define SEARCH_H
 
-unsigned pv[64];
-unsigned pv_depth;
 uint64_t nodes_searched;
 
-int quiesc_search(int, int);
-int alphabeta_search(int, int, int);
-unsigned think(int);
+int qsearch(int, int);
+int search(int, int, int);
+unsigned search_root();
 void moves_sort(unsigned* moves, unsigned move_count);
 
 #endif
