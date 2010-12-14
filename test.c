@@ -99,8 +99,8 @@ void search_test() {
         actual_move = search_root();
         expected_move = find_short_algebraic_move(expected_move_string);
         
-        printf("%-15s ", id);
-        printf("%-10s ", expected_move_string);
+        printf("%-10s ", id);
+        printf("%-8s ", expected_move_string);
         if(actual_move == expected_move) {
             printf(".");
             passed_tests++;

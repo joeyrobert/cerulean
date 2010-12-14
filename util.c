@@ -136,19 +136,18 @@ void move_to_short_algebraic(unsigned move, char* str) {
     }
 
     /* Board status (checkmate/stalemate) */
-    board_add(move);
-
-    count = gen_moves(moves); /* 2nd ply moves */
-    check = is_in_check(turn);
-    
-    if(count == 0 && check)
-        str[loc++] = '#';
-    else if(count == 0)
-        str[loc++] = '=';
-    else if(check)
-        str[loc++] = '+';
-    
-    board_subtract();
+    if(board_add(move)) {
+        count = gen_moves(moves); /* 2nd ply moves */
+        check = is_in_check(turn);
+        board_subtract();
+        
+        if(count == 0 && check)
+            str[loc++] = '#';
+        else if(count == 0)
+            str[loc++] = '=';
+        else if(check)
+            str[loc++] = '+';
+    }
 
     str[loc++] = '\0';
 }

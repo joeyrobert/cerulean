@@ -74,7 +74,8 @@ void xboard_run() {
             printf("go              Forces the engine to think\n");
             printf("new             Sets up the default board position\n");
             printf("setboard [FEN]  Sets the board to whatever you want\n");
-            printf("testsuite       Runs the perft test suite\n");
+            printf("perfttest       Runs the perft test suite\n");
+            printf("searchtest      Runs the search test suite\n");
             printf("white           Sets the active colour to WHITE\n");
             printf("black           Sets the active colour to BLACK\n");
             printf("time [INT]      Sets engine's time (in centiseconds)\n");
