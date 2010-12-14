@@ -35,17 +35,17 @@ void perft_test() {
             board_set_fen(fen);
             depth = pch[1] - '0';
             expected = atol(&pch[3]);            
-            printf("%i %li ", depth, expected);
+            printf("%i %9li ", depth, expected);
             actual = perft_perft(depth);
             expected_moves += expected;
             actual_moves += actual;
             total_tests++;
 
             if(expected == actual) {
-                printf(".\n");
+                printf("PASS \n");
                 passed_tests++;
             } else
-                printf("(received %llu)\n", actual);
+                printf("FAIL (%llu)\n", actual);
 
             pch = strtok (NULL, ";");
         }
@@ -67,52 +67,74 @@ void search_test() {
     FILE *file;
     char line_tmp[200], line[200], *pch, fen[200], id[200];
     char expected_move_string[10], actual_move_string[10];
-    unsigned total_tests, passed_tests, i;
+    unsigned total_tests, passed_tests, i, j;
     unsigned actual_move, expected_move;
+    clock_t start, end;
+    double timespan;
 
-    file = fopen("suites/ecmgcp.epd", "r");
+    char suites[][30] = {"suites/arasan12.epd",
+                         "suites/bt2630.epd",
+                         "suites/ecmgcp.epd",
+                         "suites/eet.epd",
+                         "suites/lapuce2.epd",
+                         "suites/pet.epd",
+                         "suites/sbd.epd",
+                         "suites/wac.epd"};
+
     total_tests = 0; passed_tests = 0;
+    start = clock();
     
-    while(fgets(line_tmp, 200, file) != NULL) {        
-        total_tests++;
+    for(j = 0; j < 8; j++) {
+      printf("\n################ %s ################\n", suites[j]);
+      file = fopen(suites[j], "r");
+      
+      while(fgets(line_tmp, 200, file) != NULL) {        
+          total_tests++;
 
-        /* Get the best move */
-        strcpy(line, line_tmp);
-        pch = strtok(line, " ");
-        for(i = 0; i < 5; i++)
-            pch = strtok(NULL, " ");
-        strcpy(expected_move_string, pch);
-        expected_move_string[strlen(expected_move_string) - 1] = '\0';
-        
-        /* Get the fen board */
-        strcpy(line, line_tmp);
-        pch = strtok(line, ";");
-        strcpy(fen, pch);
+          /* Get the best move */
+          strcpy(line, line_tmp);
+          pch = strtok(line, " ");
+          for(i = 0; i < 5; i++)
+              pch = strtok(NULL, " ");
+          strcpy(expected_move_string, pch);
+          expected_move_string[strlen(expected_move_string) - 1] = '\0';
+          
+          /* Get the fen board */
+          strcpy(line, line_tmp);
+          pch = strtok(line, ";");
+          strcpy(fen, pch);
 
-        /* Get the fen board */
-        strcpy(line, line_tmp);
-        pch = strtok(line, "\"");
-        pch = strtok(NULL, "\"");
-        strcpy(id, pch);
+          /* Get the fen board */
+          strcpy(line, line_tmp);
+          pch = strtok(line, "\"");
+          pch = strtok(NULL, "\"");
+          strcpy(id, pch);
 
-        board_set_fen(fen);
-        actual_move = search_root();
-        expected_move = find_short_algebraic_move(expected_move_string);
-        
-        printf("%-10s ", id);
-        printf("%-8s ", expected_move_string);
-        if(actual_move == expected_move) {
-            printf(".");
-            passed_tests++;
-        } else {
-            move_to_short_algebraic(actual_move, actual_move_string);
-            printf("(received %s)", actual_move_string);
-        }
+          board_set_fen(fen);
+          actual_move = search_root();
+          expected_move = find_short_algebraic_move(expected_move_string);
+          
+          printf("%-27s ", id);
+          printf("%-8s ", expected_move_string);
+          if(actual_move == expected_move) {
+              printf("PASS");
+              passed_tests++;
+          } else {
+              move_to_short_algebraic(actual_move, actual_move_string);
+              printf("FAIL (%s)", actual_move_string);
+          }
 
-        printf("\n");
+          printf("\n");
+      }
+
+      fclose(file);
     }
-    fclose(file);
 
+    end = clock();
+    timespan = (double)(end - start) / CLOCKS_PER_SEC;
+
+    printf("\n");
     printf("# Passed       %10u\n", passed_tests);
     printf("# Total        %10u\n", total_tests);
+    printf("Time           %9.3fs\n", timespan);
 }
