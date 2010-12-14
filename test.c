@@ -28,7 +28,7 @@ void perft_test() {
     while(fgets(line, 200, file) != NULL) {
         pch = strtok(line, ";");
         strcpy (fen, pch);
-        printf("%s\n", pch);
+        printf("\n\033[1m%s\033[0m\n", pch);
         pch = strtok (NULL, ";");
 
         while(pch != NULL) {
@@ -42,10 +42,11 @@ void perft_test() {
             total_tests++;
 
             if(expected == actual) {
-                printf("PASS \n");
+                printf("\033[32mPASS\033[0m");
                 passed_tests++;
             } else
-                printf("FAIL (%llu)\n", actual);
+                printf("\033[31mFAIL (%llu)\033[0m", actual);
+            printf("\n");
 
             pch = strtok (NULL, ";");
         }
@@ -85,7 +86,7 @@ void search_test() {
     start = clock();
     
     for(j = 0; j < 8; j++) {
-      printf("\n################ %s ################\n", suites[j]);
+      printf("\n\033[1m%s\033[0m\n", suites[j]);
       file = fopen(suites[j], "r");
       
       while(fgets(line_tmp, 200, file) != NULL) {        
@@ -116,12 +117,13 @@ void search_test() {
           
           printf("%-27s ", id);
           printf("%-8s ", expected_move_string);
+
           if(actual_move == expected_move) {
-              printf("PASS");
+              printf("\033[32mPASS\033[0m");
               passed_tests++;
           } else {
               move_to_short_algebraic(actual_move, actual_move_string);
-              printf("FAIL (%s)", actual_move_string);
+              printf("\033[31mFAIL (%s)\033[0m", actual_move_string);
           }
 
           printf("\n");
