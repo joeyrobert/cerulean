@@ -7,7 +7,7 @@ unsigned piece_values[] = {
     100,        /* PAWN */
     315,        /* BISHOP */
     320,        /* KNIGHT */
-    500,        /* ROOK */
+    550,        /* ROOK */
     975,        /* QUEEN */
     INFINITE    /* KING */
 };
@@ -46,15 +46,17 @@ int pawn_structure() {
 
     for(i = 0; i < 8; i++) {
         /* Doubled-up pawns (-20 for doubled pawns, -30 for tripled, etc.) */
+
         if(w_column[i] > 1)
             result -= 10*w_column[i];
 
         if(b_column[i] > 1)
             result += 10*w_column[i];
 
+
         /* Isolated pawns (-10 each) */
         left  = (i+1 < 8 ? w_column[i+1] == 0 : 1);
-        right = (i-1 < 8 ? w_column[i-1] == 0 : 1); /* < 8 since they're unsigned */
+        right = (i-1 < 8 ? w_column[i-1] == 0 : 1);/*  < 8 since they're unsigned*/ 
         if(w_column[i] >= 1 && left && right)
             result -= 5;
 
@@ -62,6 +64,7 @@ int pawn_structure() {
         right = (i-1 < 8 ? b_column[i-1] == 0 : 1);
         if(b_column[i] >= 1 && left && right)
             result += 5;
+
     }
     
     return result;
