@@ -29,7 +29,8 @@ void generate_distance() {
 }
 
 void generate_vertical_distance() {
-    unsigned i, j, A, B, diff;
+    unsigned A, B;
+    int i, j, diff;
 
     for(i = 0; i < 64; i++) {
         for(j = 0; j < 64; j++) {
@@ -143,36 +144,36 @@ int pawn_structure() {
 
     for(i = 0; i < w_pieces.count; i++) {
         ++w_column[INDEX2COLUMN(w_pieces.index[i])];
-        //
-        ///* Backward pawn */
-        //defended = 0;
-        //for(j = 0; j < 4; j++) {
-        //    defender = w_pieces.index[i] + defensive_places[j];
-        //    if(pieces[defender] == PAWN && colours[defender] == WHITE) {
-        //        defended = 1;
-        //        break;
-        //    }
-        //}
+        
+        /* Backward pawn */
+        defended = 0;
+        for(j = 0; j < 4; j++) {
+            defender = w_pieces.index[i] + defensive_places[j];
+            if(pieces[defender] == PAWN && colours[defender] == WHITE) {
+                defended = 1;
+                break;
+            }
+        }
 
-        //if(!defended)
-        //    result -= BACKWARD_PAWN_PENALTY;
+        if(!defended)
+            result -= BACKWARD_PAWN_PENALTY;
     }
 
     for(i = 0; i < b_pieces.count; i++) {
         ++b_column[INDEX2COLUMN(b_pieces.index[i])];
     
-        ///* Backward pawn */
-        //defended = 0;
-        //for(j = 0; j < 4; j++) {
-        //    defender = b_pieces.index[i] - defensive_places[j];
-        //    if(pieces[defender] == PAWN && colours[defender] == BLACK) {
-        //        defended = 1;
-        //        break;
-        //    }
-        //}
+        /* Backward pawn */
+        defended = 0;
+        for(j = 0; j < 4; j++) {
+            defender = b_pieces.index[i] - defensive_places[j];
+            if(pieces[defender] == PAWN && colours[defender] == BLACK) {
+                defended = 1;
+                break;
+            }
+        }
 
-        //if(!defended)
-        //    result += BACKWARD_PAWN_PENALTY;
+        if(!defended)
+            result += BACKWARD_PAWN_PENALTY;
     }
 
     for(i = 0; i < 8; i++) {
