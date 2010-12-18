@@ -116,7 +116,7 @@ unsigned search_root() {
     nodes_searched = 0;
     
     /* Depth is fixed for now */
-    depth = 2;
+    depth = 4;
     
     /* Move ordering */
     count = gen_moves(moves);

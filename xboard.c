@@ -9,6 +9,7 @@
 #include "util.h"
 #include "zobrist.h"
 #include "search.h"
+#include "evaluate.h"
 
 /* this is a very poor implementation of xboard */
 void xboard_run() {
@@ -21,6 +22,8 @@ void xboard_run() {
     zobrist_fill();
     board_create_table();
     board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+    generate_distance();
 
     while(1) {
         fgets(command, 1000, stdin);

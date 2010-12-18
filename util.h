@@ -3,6 +3,7 @@
 
 #define MIN(a, b)   ((a < b) ? a : b)
 #define MAX(a, b)   ((a > b) ? a : b)
+#define ABS(a)      (((a) < 0) ? -1*(a) : (a))
 
 unsigned piece_name_to_value(char);
 char piece_value_to_name(unsigned);
