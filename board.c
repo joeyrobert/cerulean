@@ -850,27 +850,6 @@ void board_enpassant(unsigned new_enpassant_target) {
     }
 }
 
-/* This is NOT foolproof. Different boards may appear identical.
-Identical boards will appear identical though. */
-unsigned board_debug() {
-    unsigned i, row, column, sum;
-    sum = 0;
-
-    for(row = 0; row < 8; row++) {
-        for(column = 0; column < 8; column++) {
-            sum += ROWCOLUMN2INDEX(row, column);
-            sum += pieces[ROWCOLUMN2INDEX(row, column)];
-        }
-    }
-    
-    for(i = 0; i < b_pieces.count; i++)
-        sum += b_pieces.index[i];
-    for(i = 0; i < w_pieces.count; i++)
-        sum += w_pieces.index[i];
-
-    return sum;
-}
-
 /* Generates a clean zobrist from a board */
 ZOBRIST board_gen_zobrist() {
     ZOBRIST new_zobrist;
