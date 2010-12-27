@@ -487,10 +487,12 @@ unsigned board_add(unsigned move) {
         case WHITE:
             zobrist ^= zobrist_b[pieces[enpassant_target - turn*16]][enpassant_target - turn*16];
             piece_list_subtract(&b_pieces, enpassant_target - turn*16);
+            piece_list_subtract(&b_pieces_by_type[PAWN], enpassant_target - turn*16);
             break;
         case BLACK:
             zobrist ^= zobrist_w[pieces[enpassant_target - turn*16]][enpassant_target - turn*16];
             piece_list_subtract(&w_pieces, enpassant_target - turn*16);
+            piece_list_subtract(&w_pieces_by_type[PAWN], enpassant_target - turn*16);
             break;
         }
 
@@ -634,9 +636,11 @@ void board_subtract() {
         switch(turn) {
         case WHITE:
             piece_list_add(&b_pieces, enpassant_target - turn*16);
+            piece_list_add(&b_pieces_by_type[PAWN], enpassant_target - turn*16);
             break;
         case BLACK:
             piece_list_add(&w_pieces, enpassant_target - turn*16);
+            piece_list_add(&w_pieces_by_type[PAWN], enpassant_target - turn*16);
             break;
         }
         move_piece_discreetly(to, from);    
@@ -650,9 +654,11 @@ void board_subtract() {
             switch(turn) {
             case WHITE:
                 piece_list_add(&b_pieces, to);
+                piece_list_add(&b_pieces_by_type[previous_piece], to);
                 break;
             case BLACK:
                 piece_list_add(&w_pieces, to);
+                piece_list_add(&w_pieces_by_type[previous_piece], to);
                 break;
             }
             pieces[to] = previous_piece;
@@ -663,9 +669,11 @@ void board_subtract() {
         switch(turn) {
         case WHITE:
             piece_list_add(&b_pieces, to);
+            piece_list_add(&b_pieces_by_type[previous_piece], to);
             break;
         case BLACK:
             piece_list_add(&w_pieces, to);
+            piece_list_add(&w_pieces_by_type[previous_piece], to);
             break;
         }
         move_piece_discreetly(to, from);
@@ -768,10 +776,12 @@ void board_capture_piece(unsigned from, unsigned to) {
     case WHITE:
         zobrist ^= zobrist_w[pieces[to]][to];
         piece_list_subtract(&w_pieces, to);
+        piece_list_subtract(&w_pieces_by_type[pieces[to]], to);
         break;
     case BLACK:
         zobrist ^= zobrist_b[pieces[to]][to];
         piece_list_subtract(&b_pieces, to);
+        piece_list_subtract(&b_pieces_by_type[pieces[to]], to);
         break;
     }
     move_piece(from, to);
@@ -787,10 +797,16 @@ void move_piece_discreetly(unsigned from, unsigned to) {
     case WHITE:
         piece_list_subtract(&w_pieces, from);
         piece_list_add(&w_pieces, to);
+
+        piece_list_subtract(&w_pieces_by_type[pieces[to]], from);
+        piece_list_add(&w_pieces_by_type[pieces[to]], to);
         break;
     case BLACK:
         piece_list_subtract(&b_pieces, from);
         piece_list_add(&b_pieces, to);
+
+        piece_list_subtract(&b_pieces_by_type[pieces[to]], from);
+        piece_list_add(&b_pieces_by_type[pieces[to]], to);
         break;
     }
 }
@@ -805,13 +821,19 @@ void move_piece(unsigned from, unsigned to) {
     case WHITE:
         piece_list_subtract(&w_pieces, from);
         piece_list_add(&w_pieces, to);
-        
+
+        piece_list_subtract(&w_pieces_by_type[pieces[to]], from);
+        piece_list_add(&w_pieces_by_type[pieces[to]], to);
+
         zobrist ^= zobrist_w[pieces[to]][from];
         zobrist ^= zobrist_w[pieces[to]][to];
         break;
     case BLACK:
         piece_list_subtract(&b_pieces, from);
         piece_list_add(&b_pieces, to);
+
+        piece_list_subtract(&b_pieces_by_type[pieces[to]], from);
+        piece_list_add(&b_pieces_by_type[pieces[to]], to);
 
         zobrist ^= zobrist_b[pieces[to]][from];
         zobrist ^= zobrist_b[pieces[to]][to];
@@ -849,6 +871,7 @@ unsigned board_debug() {
     return sum;
 }
 
+/* Generates a clean zobrist from a board */
 ZOBRIST board_gen_zobrist() {
     ZOBRIST new_zobrist;
     unsigned i, index;
