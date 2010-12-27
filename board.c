@@ -20,6 +20,7 @@ void board_create_table() {
 }
 
 void board_new() {
+	int i;
     memset(pieces,  EMPTY, 128*sizeof(unsigned));
     memset(colours, EMPTY, 128*sizeof(unsigned));
     turn = WHITE;
@@ -30,10 +31,13 @@ void board_new() {
     total_history = 0;
 
     /* piece list structure */
-    w_king = EMPTY;
-    b_king = EMPTY;
-    piece_list_new(&w_pieces);
-    piece_list_new(&b_pieces);
+    w_king = EMPTY; b_king = EMPTY;
+    piece_list_new(&w_pieces);	piece_list_new(&b_pieces);
+
+	for(i = 0; i < 7; i++) {
+		piece_list_new(&w_pieces_by_type[i]);
+		piece_list_new(&b_pieces_by_type[i]);
+	}
 }
 
 void board_set_fen(char* fen) {    
@@ -124,17 +128,17 @@ void board_set_fen(char* fen) {
 
     /* King positions */
     for(i = 0; i < w_pieces.count; i++) {
-        if(pieces[w_pieces.index[i]] == KING) {
+        if(pieces[w_pieces.index[i]] == KING)
             w_king = w_pieces.index[i];
-            break;
-        }
+        else
+            piece_list_add(&w_pieces_by_type[pieces[w_pieces.index[i]]], w_pieces.index[i]);
     } 
 
     for(i = 0; i < b_pieces.count; i++) {
-        if(pieces[b_pieces.index[i]] == KING) {
+        if(pieces[b_pieces.index[i]] == KING)
             b_king = b_pieces.index[i];
-            break;
-        }
+        else
+            piece_list_add(&b_pieces_by_type[pieces[b_pieces.index[i]]], b_pieces.index[i]);
     }
 
     zobrist = board_gen_zobrist();

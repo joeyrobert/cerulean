@@ -33,8 +33,20 @@
 
 unsigned pieces[128];
 int colours[128];
+
+/* Piece lists.
+
+ - Separate piece lists are needed in eval().
+ - A full piece list for each side makes for cleaner code
+   when all pieces need to be iterated over.
+ - King locations are needed in is_in_check().
+*/
 piece_list w_pieces, b_pieces;
-unsigned w_king, b_king; /* saves lookup time in check methods */
+unsigned w_king, b_king;
+
+/* Piece lists by type are nested piece lists. They can be
+accessed by w_pieces_by_type[PAWN] for example. */
+piece_list w_pieces_by_type[7], b_pieces_by_type[7];
 
 int turn;
 unsigned castling;

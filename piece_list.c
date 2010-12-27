@@ -8,7 +8,7 @@
   Method to using a piece list:
     - They can be iterated over to yield the index of each piece.
     - Similar to mediocre's implementation, however abandons the
-      use of global variables.
+      use of global variables (i.e. global reverse lookup table).
 
 */
 void piece_list_new(piece_list* list) {

@@ -1,7 +1,8 @@
 #ifndef PIECE_LIST_H 
 #define PIECE_LIST_H
 
-/* size: 1 + 16 + 128 = 145 * sizeof(unsigned) */
+/* Set to hold a max of 16 pieces, although 10 pieces is
+   enough for any one piece type */
 typedef struct {
     unsigned count;        /* total number available */
     unsigned index[16];    /* piece => board index */
