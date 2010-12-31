@@ -14,7 +14,7 @@ int delta_diagonal[4] = {15, 17, -15, -17};
 int delta_vertical[4] = {16, -16, 1, -1};
 
 void board_create_table() {
-    int size = 20;
+    int size = 21;
     table = (hash_table*) malloc(sizeof(hash_table));
     hash_new(table, size);
 }
@@ -130,15 +130,13 @@ void board_set_fen(char* fen) {
     for(i = 0; i < w_pieces.count; i++) {
         if(pieces[w_pieces.index[i]] == KING)
             w_king = w_pieces.index[i];
-        else
-            piece_list_add(&w_pieces_by_type[pieces[w_pieces.index[i]]], w_pieces.index[i]);
+        piece_list_add(&w_pieces_by_type[pieces[w_pieces.index[i]]], w_pieces.index[i]);
     } 
 
     for(i = 0; i < b_pieces.count; i++) {
         if(pieces[b_pieces.index[i]] == KING)
             b_king = b_pieces.index[i];
-        else
-            piece_list_add(&b_pieces_by_type[pieces[b_pieces.index[i]]], b_pieces.index[i]);
+        piece_list_add(&b_pieces_by_type[pieces[b_pieces.index[i]]], b_pieces.index[i]);
     }
 
     zobrist = board_gen_zobrist();

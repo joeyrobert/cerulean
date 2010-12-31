@@ -2,9 +2,9 @@
 #define EVALUATE_H
 
 #define INFINITE 100000
-#define DOUBLE_PAWN_PENALTY 10
-#define ISOLATED_PAWN_PENALTY 15
-#define BACKWARD_PAWN_PENALTY 0
+#define DOUBLE_PAWN_PENALTY 5
+#define ISOLATED_PAWN_PENALTY 10
+#define BACKWARD_PAWN_PENALTY 2
 
 /* Distance related */
 unsigned distance[240];

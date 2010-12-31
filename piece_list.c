@@ -24,6 +24,8 @@ void piece_list_add(piece_list* list, unsigned index) {
 void piece_list_subtract(piece_list* list, unsigned index) {
     unsigned loc;
     loc = list->reverse[index];
+	if(list->count == 0)
+		printf("WHAT");
     list->count -= 1;
     list->index[loc] = list->index[list->count];
     list->reverse[list->index[loc]] = loc;
