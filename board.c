@@ -507,13 +507,19 @@ unsigned board_add(unsigned move) {
         else
             move_piece(from, to);
         pieces[to] = MOVE2PROMOTE(move);
-        
+		  
         switch(turn) {
         case WHITE:
+			piece_list_subtract(&w_pieces_by_type[PAWN], to);
+			piece_list_add(&w_pieces_by_type[pieces[to]], to);
+
             zobrist ^= zobrist_w[PAWN][to];
             zobrist ^= zobrist_w[pieces[to]][to];
             break;
         case BLACK:
+			piece_list_subtract(&b_pieces_by_type[PAWN], to);
+			piece_list_add(&b_pieces_by_type[pieces[to]], to);
+
             zobrist ^= zobrist_b[PAWN][to];
             zobrist ^= zobrist_b[pieces[to]][to];
             break;
@@ -649,7 +655,20 @@ void board_subtract() {
     /* PROMOTE (must be before capture) */
     } else if(move & BITS_PROMOTE) {
         move_piece_discreetly(to, from);
+		
+        switch(turn) {
+        case WHITE:
+			piece_list_subtract(&w_pieces_by_type[pieces[from]], from);
+			piece_list_add(&w_pieces_by_type[PAWN], from);
+            break;
+        case BLACK:
+			piece_list_subtract(&b_pieces_by_type[pieces[from]], from);
+			piece_list_add(&b_pieces_by_type[PAWN], from);
+            break;
+        }
         pieces[from] = PAWN;
+
+		
         if(move & BITS_CAPTURE) {
             switch(turn) {
             case WHITE:
@@ -874,4 +893,26 @@ ZOBRIST board_gen_zobrist() {
     if(turn == WHITE) new_zobrist ^= zobrist_side;
 
     return new_zobrist;
+}
+
+void piece_list_debug() {
+	unsigned i, w_piece_count[7], b_piece_count[67];
+	for(i = 0; i < 7; i++) {
+		w_piece_count[i] = 0;
+		b_piece_count[i] = 0;
+	}
+
+	for(i = 0; i < w_pieces.count; i++)
+		w_piece_count[pieces[w_pieces.index[i]]]++;
+
+	for(i = 0; i < b_pieces.count; i++)
+		b_piece_count[pieces[b_pieces.index[i]]]++;
+
+	for(i = 1; i < 6; i++) {
+		if(w_pieces_by_type[i].count != w_piece_count[i])
+			printf("WHAT");
+
+		if(b_pieces_by_type[i].count != b_piece_count[i])
+			printf("WHAT");
+	}
 }
