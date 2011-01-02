@@ -105,18 +105,6 @@ int mobility() {
         );
         result -= knight_effectiveness[distance_to_center];
     }
-	
-	for(i = 0; i < w_pieces_by_type[ROOK].count; i++) {
-        index = w_pieces_by_type[ROOK].index[i];
-
-        result += knight_effectiveness[distance_to_center];
-    }
-
-	for(i = 0; i < b_pieces_by_type[ROOK].count; i++) {
-        index = b_pieces_by_type[ROOK].index[i];
-
-        result -= knight_effectiveness[distance_to_center];
-    }
 
     return result;
 }
