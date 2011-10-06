@@ -10,7 +10,7 @@ unsigned piece_values[] = {
     330,        /* KNIGHT */
     550,        /* ROOK */
     975,        /* QUEEN */
-    INFINITE    /* KING */
+    0           /* KING */
 };
 
 void generate_distance() {
@@ -50,27 +50,54 @@ Static Evaluation:
 int static_evaluation() {
     int result;
 
-    result  = material();
-    result += mobility();
-    result += development();
-    //result += pawn_structure();
+    result = material(WHITE);
+    result -= material(BLACK);
+    result += mobility(WHITE);
+    result -= mobility(BLACK);
+    result += development(WHITE);
+    result -= development(BLACK);
 
     return turn*result;
 }
 
 /*
+Static Evaluation draw
+*/
+void static_evaluation_draw() {
+    int mat[2], mob[2], dev[2];
+
+    mat[0] = material(WHITE);
+    mat[1] = material(BLACK);
+    mob[0] = mobility(WHITE);
+    mob[1] = mobility(BLACK);
+    dev[0] = development(WHITE);
+    dev[1] = development(BLACK);
+
+    printf("              White Black Total\n");
+    printf("Material......%5d %5d %5d\n", mat[0], mat[1], mat[0] - mat[1]);
+    printf("Mobility......%5d %5d %5d\n", mob[0], mob[1], mob[0] - mob[1]);
+    printf("Development...%5d %5d %5d\n", dev[0], dev[1], dev[0] - dev[1]);
+    printf("\n");
+}
+
+/*
 Piece Evaluation:
  - Sums piece_values for each side.
+ - +ve for both black and white
 */
-int material() {
+int material(int side) {
     unsigned i, result;
     result = 0;
 
-    for(i = 0; i < w_pieces.count; i++)
-        result += piece_values[pieces[w_pieces.index[i]]];
-
-    for(i = 0; i < b_pieces.count; i++)
-        result -= piece_values[pieces[b_pieces.index[i]]];
+    if(side == WHITE) { 
+        for(i = 0; i < w_pieces.count; i++) {
+            result += piece_values[pieces[w_pieces.index[i]]];
+        }
+    } else {
+        for(i = 0; i < b_pieces.count; i++) {
+            result += piece_values[pieces[b_pieces.index[i]]];
+        }
+    }
 
     return result;
 }
@@ -84,26 +111,28 @@ TODO:
  - Bishop effectiveness
 */
 int knight_effectiveness[] = {10, 8, 3, 0};
-int mobility() {
+int mobility(int side) {
     unsigned i, result, index, distance_to_center;
     result = 0;
     
-    for(i = 0; i < w_pieces_by_type[KNIGHT].count; i++) {
-        index = w_pieces_by_type[KNIGHT].index[i];
-        distance_to_center = MIN(
-            MIN(distance[0x77+index-51], distance[0x77+index-52]),
-            MIN(distance[0x77+index-67], distance[0x77+index-68])
-        );
-        result += knight_effectiveness[distance_to_center];
-    }
-
-	for(i = 0; i < b_pieces_by_type[KNIGHT].count; i++) {
-        index = b_pieces_by_type[KNIGHT].index[i];
-        distance_to_center = MIN(
-            MIN(distance[0x77+index-51], distance[0x77+index-52]),
-            MIN(distance[0x77+index-67], distance[0x77+index-68])
-        );
-        result -= knight_effectiveness[distance_to_center];
+    if(side == WHITE) {
+        for(i = 0; i < w_pieces_by_type[KNIGHT].count; i++) {
+            index = w_pieces_by_type[KNIGHT].index[i];
+            distance_to_center = MIN(
+                MIN(distance[0x77+index-51], distance[0x77+index-52]),
+                MIN(distance[0x77+index-67], distance[0x77+index-68])
+            );
+            result += knight_effectiveness[distance_to_center];
+        }
+    } else {
+        for(i = 0; i < b_pieces_by_type[KNIGHT].count; i++) {
+            index = b_pieces_by_type[KNIGHT].index[i];
+            distance_to_center = MIN(
+                MIN(distance[0x77+index-51], distance[0x77+index-52]),
+                MIN(distance[0x77+index-67], distance[0x77+index-68])
+            );
+            result += knight_effectiveness[distance_to_center];
+        }
     }
 
     return result;
@@ -117,7 +146,7 @@ TODO:
  - King safety (early)
  - King importance (endgame)
 */
-int development() {
+int development(int side) {
     return 0;
 }
 
@@ -130,7 +159,7 @@ TODO:
  - Backward pawn penalty
 */
 int defensive_places[] = {-15, -17, -1, 1};
-int pawn_structure() {
+int pawn_structure(int side) {
     unsigned i, j, result, w_column[8], b_column[8], right, left, index;
     unsigned defender, defended;
     result = 0;

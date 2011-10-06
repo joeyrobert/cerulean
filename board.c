@@ -892,25 +892,3 @@ ZOBRIST board_gen_zobrist() {
 
     return new_zobrist;
 }
-
-void piece_list_debug() {
-	unsigned i, w_piece_count[7], b_piece_count[67];
-	for(i = 0; i < 7; i++) {
-		w_piece_count[i] = 0;
-		b_piece_count[i] = 0;
-	}
-
-	for(i = 0; i < w_pieces.count; i++)
-		w_piece_count[pieces[w_pieces.index[i]]]++;
-
-	for(i = 0; i < b_pieces.count; i++)
-		b_piece_count[pieces[b_pieces.index[i]]]++;
-
-	for(i = 1; i < 6; i++) {
-		if(w_pieces_by_type[i].count != w_piece_count[i])
-			printf("WHAT");
-
-		if(b_pieces_by_type[i].count != b_piece_count[i])
-			printf("WHAT");
-	}
-}

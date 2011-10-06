@@ -50,6 +50,8 @@ void xboard_run() {
             perft_test();
         else if(!strncmp(command, "searchtest", 10))
             search_test();
+        else if(!strncmp(command, "eval", 4))
+            static_evaluation_draw();
         else if(!strncmp(command, "setboard", 8))
             board_set_fen(&command[9]);
         else if(!strncmp(command, "otim", 4))
@@ -79,6 +81,7 @@ void xboard_run() {
             printf("setboard [FEN]  Sets the board to whatever you want\n");
             printf("perfttest       Runs the perft test suite\n");
             printf("searchtest      Runs the search test suite\n");
+            printf("eval            Performs a static evaluation of the board and prints info\n");
             printf("white           Sets the active colour to WHITE\n");
             printf("black           Sets the active colour to BLACK\n");
             printf("time [INT]      Sets engine's time (in centiseconds)\n");

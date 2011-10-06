@@ -75,6 +75,5 @@ void move_piece(unsigned, unsigned);
 void move_piece_discreetly(unsigned, unsigned);
 unsigned is_in_check(int);
 unsigned is_attacked(unsigned, int);
-void piece_list_debug();
 
 #endif
