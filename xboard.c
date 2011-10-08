@@ -10,6 +10,7 @@
 #include "zobrist.h"
 #include "search.h"
 #include "evaluate.h"
+#include "book.h"
 
 /* this is a very poor implementation of xboard */
 void xboard_run() {
@@ -51,7 +52,7 @@ void xboard_run() {
         else if(!strncmp(command, "searchtest", 10))
             search_test();
         else if(!strncmp(command, "eval", 4))
-            static_evaluation_draw();
+            static_evaluation(1);
         else if(!strncmp(command, "setboard", 8))
             board_set_fen(&command[9]);
         else if(!strncmp(command, "otim", 4))
@@ -70,6 +71,9 @@ void xboard_run() {
         } else if(!strncmp(command, "divide", 6)) {
             value = atoi(&command[6]);
             perft_divide(value);
+        } else if(!strncmp(command, "genbook", 7)) {
+            printf("Generating opening book...");
+            generate_opening_book();
         } else if(!strncmp(command, "help", 4)) {
             printf("Commands\n");
             printf("--------\n");
@@ -86,6 +90,7 @@ void xboard_run() {
             printf("black           Sets the active colour to BLACK\n");
             printf("time [INT]      Sets engine's time (in centiseconds)\n");
             printf("otim [INT]      Sets opponent's time (in centiseconds)\n");
+            printf("genbook         Generates opening book\n\n");
             printf("exit            Exits the menu\n");
             printf("help            Gets you this magical menu\n\n");
         } else

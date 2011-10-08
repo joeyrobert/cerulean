@@ -13,11 +13,11 @@ unsigned vertical_distance[240];
 void generate_distance();
 void generate_vertical_distance();
 
-int static_evaluation();
-void static_evaluation_draw();
+int static_evaluation(int draw);
 int material(int side);
 int mobility(int side);
 int development(int side);
 int pawn_structure(int side);
+int positioning(int side);
 
 #endif

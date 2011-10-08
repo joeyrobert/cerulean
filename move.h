@@ -21,6 +21,8 @@ The BITS property is defined as follows (borrowed from TSCP):
 The PROMOTE property is equal to the piece (QUEEN, ROOK, BISHOP, KNIGHT).
 */
 
+#define MOVTYPE            unsigned
+
 #define BITS_CAPTURE       0x01000000
 #define BITS_CASTLE        0x02000000
 #define BITS_ENPASSANT     0x04000000

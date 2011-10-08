@@ -167,7 +167,7 @@ void board_draw() {
     printf("Zobrist: 0x%016llX\n", zobrist);
 }
 
-unsigned gen_moves(unsigned* moves) {
+MOVTYPE gen_moves(unsigned* moves) {
     piece_list *list;
     unsigned i, j, index, count, new_move, last_row, first_row;
 
@@ -344,7 +344,7 @@ unsigned gen_caps(unsigned* moves) {
     unsigned i, j, index, count, new_move, last_row;
 
     switch(turn) {
-    case WHITE:
+    case WHITE: /* ugly */
         list = &w_pieces;
         last_row = 7;
         break;
@@ -576,7 +576,7 @@ unsigned board_add(unsigned move) {
         }
     }
 
-    /* Post processing */
+    /* Set the new king location */
     if(pieces[to] == KING) {
         switch(turn) {
         case WHITE:
@@ -588,6 +588,7 @@ unsigned board_add(unsigned move) {
         }
     }
     
+    /* Update castling bits */
     if((castling & CASTLE_WQ) && (to == 0 || from == 0 || to == 4 || from == 4)) {
         castling -= CASTLE_WQ;
         zobrist ^= zobrist_castling[CASTLE_WQ];

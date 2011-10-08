@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include "evaluate.h"
 #include "board.h"
@@ -44,27 +45,12 @@ void generate_vertical_distance() {
 }
 
 /*
-Static Evaluation:
- - Weighted sum of scores
+Static Evaluation
+ - are these function calls slow?
+ - can we inline them if so?
 */
-int static_evaluation() {
-    int result;
-
-    result = material(WHITE);
-    result -= material(BLACK);
-    result += mobility(WHITE);
-    result -= mobility(BLACK);
-    result += development(WHITE);
-    result -= development(BLACK);
-
-    return turn*result;
-}
-
-/*
-Static Evaluation draw
-*/
-void static_evaluation_draw() {
-    int mat[2], mob[2], dev[2];
+int static_evaluation(int draw) {
+    int mat[2], mob[2], dev[2], pos[2], trop[2], totals[2], total;
 
     mat[0] = material(WHITE);
     mat[1] = material(BLACK);
@@ -72,12 +58,25 @@ void static_evaluation_draw() {
     mob[1] = mobility(BLACK);
     dev[0] = development(WHITE);
     dev[1] = development(BLACK);
+    pos[0] = positioning(WHITE);
+    pos[1] = positioning(BLACK);
 
-    printf("              White Black Total\n");
-    printf("Material......%5d %5d %5d\n", mat[0], mat[1], mat[0] - mat[1]);
-    printf("Mobility......%5d %5d %5d\n", mob[0], mob[1], mob[0] - mob[1]);
-    printf("Development...%5d %5d %5d\n", dev[0], dev[1], dev[0] - dev[1]);
-    printf("\n");
+    totals[0] = mat[0] + mob[0] + dev[0] + pos[0];
+    totals[1] = mat[1] + mob[1] + dev[1] + pos[1];
+    total = totals[0] - totals[1];
+
+    if(draw) {
+        printf("              White Black Total\n");
+        printf("Material......%5d %5d %5d\n", mat[0], mat[1], mat[0] - mat[1]);
+        printf("Mobility......%5d %5d %5d\n", mob[0], mob[1], mob[0] - mob[1]);
+        printf("Development...%5d %5d %5d\n", dev[0], dev[1], dev[0] - dev[1]);
+        printf("Positioning...%5d %5d %5d\n", pos[0], pos[1], pos[0] - pos[1]);
+        printf("\n");
+        printf("Total eval....%5d %5d %5d\n", totals[0], totals[1], total);
+        printf("\n");
+    }
+
+    return total;
 }
 
 /*
@@ -147,6 +146,14 @@ TODO:
  - King importance (endgame)
 */
 int development(int side) {
+    return 0;
+}
+
+/*
+Positioning
+ - Apply positioning tables
+*/
+int positioning(int side) {
     return 0;
 }
 

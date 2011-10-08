@@ -18,7 +18,7 @@ int qsearch(int alpha, int beta) {
     unsigned moves[256], count, i;
     int stand_pat, score;
 
-    stand_pat = static_evaluation();
+    stand_pat = static_evaluation(0);
 
     if (stand_pat >= beta)
         return beta;
