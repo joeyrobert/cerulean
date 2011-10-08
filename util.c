@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include "util.h"
 #include "move.h"
@@ -189,4 +190,22 @@ unsigned find_short_algebraic_move(char* move_string) {
     }
 
     return EMPTY;
+}
+
+char* substring(char *string, int position, int length) {
+    char *pointer;
+    int c;
+ 
+    pointer = (char*)malloc((length+1)*sizeof(char));
+    for(c = 0; c < position; c++) { 
+        string++;
+    }
+ 
+    for(c = 0; c < length; c++) {
+        *(pointer+c) = *string;      
+        string++;   
+    }
+ 
+    *(pointer+c) = '\0';
+    return pointer;
 }

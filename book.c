@@ -1,4 +1,3 @@
-
 /* book.c */
 
 #include <stdlib.h>
@@ -8,33 +7,17 @@
 #include "board.h"
 #include "util.h"
 
-
-char* substring(char *string, int position, int length) {
-    char *pointer;
-    int c;
- 
-    pointer = malloc(length+1);
-    for(c = 0; c < position; c++) { 
-        string++;
-    }
- 
-    for(c = 0; c < length; c++) {
-        *(pointer+c) = *string;      
-        string++;   
-    }
- 
-    *(pointer+c) = '\0';
-    return pointer;
-}
-
 /*
 -1 if m1 < m2
 0 if m1 == m2
 1 if m1 > m2
 */
-int compare(unsigned m1, unsigned m2) {
+int compare(const void* pm1, const void* pm2) {
     int i;
+	unsigned m1, m2;
     i = 0;
+	m1 = *(unsigned*)pm1;
+	m2 = *(unsigned*)pm2;
 
     while(1) {
         /* shorter ones go at the top. all rows end with an EMPTY */
@@ -54,15 +37,13 @@ int compare(unsigned m1, unsigned m2) {
 
 void generate_opening_book() {
     char line[1000];
-    unsigned move_bol[385]; /* beginning of line */
     unsigned move;
-
     char *move_string;
     FILE *file;
     int index, length, line_no, moves_added, i, j;
 
     line_no = 0;
-    file = fopen("BOOK", "r");
+    file = fopen("BIGBOOK", "r");
 
     /* Read in seed opening book into moves */
     while(fgets(line, 1000, file) != NULL) {
@@ -90,23 +71,32 @@ void generate_opening_book() {
     }
 
     /* sort the moves array */
-    printf("STARTED SORTING\n");
-    for(i = 0; i < 385; ++i) move_bol[i] = i;
-    qsort(move_bol, 385, sizeof(unsigned), compare);
-    printf("FINISHED SORTING\n");
+    for(i = 0; i < 3543; ++i) move_order[i] = i;
+    qsort(move_order, 3543, sizeof(unsigned), compare);  
+}
 
-    for(i = 0; i < 385; ++i) {
-        printf("%08X", move_bol[i]);
+unsigned next_opening_move() {
+	unsigned i, last_book_move, last_move;
+	if(total_history == 0)
+		return moves[0][0];
 
-        //for(j = 0; j < 50; ++j) {
-        //    //if(move_bol[i][j] == EMPTY) break;
-      //      //move_to_string(move_bol[i][j], move_string);
-    //        printf("%u ", *(move_bol + i*50 + j));
-//        }
-        printf("\n");
-    }
-    
-    
+	while(opening_no < 3543) {
+		last_book_move = moves[move_order[opening_no]][total_history-1];
+		last_move = history[total_history-1][0];
+
+		if(last_move == last_book_move)
+			return moves[move_order[opening_no]][total_history];
+		
+		++opening_no;
+
+		/* check the lower ones are still the same */
+		for(i = 0; i < total_history; ++i) {
+			if(history[i][0] != moves[move_order[opening_no]][i])
+				return EMPTY;
+		}
+	}
+
+	return EMPTY;
 }
 
 /* STORE THE LIST OF OPENING MOVES in sorted ascending order and move down the list with two pointers.

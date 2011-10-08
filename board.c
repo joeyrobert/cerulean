@@ -6,6 +6,7 @@
 #include "move.h"
 #include "piece_list.h"
 #include "util.h"
+#include "book.h"
 
 /* piece deltas */
 int delta_knight[8] = {14, 31, 33, 18, -14, -31, -33, -18};
@@ -29,6 +30,7 @@ void board_new() {
     half_move_clock = 0, full_move_number = 1;
     memset(history, EMPTY, sizeof(unsigned) * 1024 * 4);
     total_history = 0;
+	opening_no = 0;
 
     /* piece list structure */
     w_king = EMPTY; b_king = EMPTY;
@@ -469,7 +471,7 @@ unsigned board_add(unsigned move) {
     history[total_history][2] = enpassant_target;   /* will either be empty or -1 * turn colour */
     history[total_history][3] = castling;
     zobrist_history[total_history] = zobrist;
-    total_history++;
+    ++total_history;
 
     /* REGULAR MOVE */
     if(MOVE2BITS(move) == 0) {
@@ -622,8 +624,7 @@ unsigned board_add(unsigned move) {
 void board_subtract() {
     unsigned from, to, move, previous_piece;
     turn = -1 * turn;
-
-    total_history--;
+    --total_history;
     move = history[total_history][0];
     previous_piece = history[total_history][1];     /* piece that existed there before,         */
     enpassant_target = history[total_history][2];   /* will either be empty or -1 * turn colour */

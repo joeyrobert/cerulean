@@ -52,7 +52,7 @@ int turn;
 unsigned castling;
 unsigned enpassant_target;
 unsigned half_move_clock;
-unsigned full_move_number;
+unsigned full_move_number; /* incremented after blacks move */
 unsigned history[2048][4];
 unsigned total_history;
 
