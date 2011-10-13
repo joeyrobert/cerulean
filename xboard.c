@@ -23,15 +23,14 @@ unsigned next_move() {
 		//for(i = 0; i < current_book_node->children_size; ++i) {
         //    child_node = child
         //}
-        child_node = book_current_node->down;
-        move = child_node->move;
 
-		if(move == EMPTY) {
+		if(book_current_node->down == NULL) {
 			out_of_opening = 1;
 			move = search_root();
 		} else {				
+            child_node = book_current_node->down;
+            move = child_node->move;
             book_current_node = child_node;
-			printf("OPENING");
 		}
 	} else {
 		move = search_root();
