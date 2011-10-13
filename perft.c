@@ -8,7 +8,7 @@
 #include "move.h"
 #include "perft.h"
 
-uint64_t perft_perft(unsigned depth) {
+uint64_t perft_perft(int depth) {
     unsigned moves[256], count, i;
     hash_node* node;
     uint64_t total;
@@ -53,13 +53,13 @@ void perft_divide(int depth) {
             total += perft;
 
             move_to_string(moves[i], str);
-            printf("%-5s     %10llu\n", str, perft);
+            printf("%-5s     %10llu\n", str, (long long unsigned int)perft);
         }
     }
     
     end = clock();
     timespan = (double)(end - start) / CLOCKS_PER_SEC;
-    printf("\nTotal     %10llu\n", total);
+    printf("\nTotal     %10llu\n", (long long unsigned int)total);
     printf("Time      %9.3fs\n", timespan);
     printf("Moves/s %12.1f\n", total/timespan);
 }

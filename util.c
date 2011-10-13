@@ -209,3 +209,4 @@ char* substring(char *string, int position, int length) {
     *(pointer+c) = '\0';
     return pointer;
 }
+

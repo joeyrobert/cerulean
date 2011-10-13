@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-uint64_t perft_perft(unsigned depth);
+uint64_t perft_perft(int depth);
 void perft_divide(int);
 
 #endif

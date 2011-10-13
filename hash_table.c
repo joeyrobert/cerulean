@@ -19,7 +19,7 @@ hash_node* hash_find(hash_table* table, ZOBRIST key) {
     return NULL;
 }
 
-void hash_add_perft(hash_table* table, ZOBRIST key, unsigned depth, uint64_t sub_nodes) {
+void hash_add_perft(hash_table* table, ZOBRIST key, int depth, uint64_t sub_nodes) {
     hash_node* node;
     node = &table->table[key % table->size];
     node->key = key;
@@ -27,7 +27,7 @@ void hash_add_perft(hash_table* table, ZOBRIST key, unsigned depth, uint64_t sub
     node->sub_nodes = sub_nodes;
 }
 
-void hash_add_move(hash_table* table, ZOBRIST key, unsigned depth, int score, unsigned type) {
+void hash_add_move(hash_table* table, ZOBRIST key, int depth, int score, unsigned type) {
     hash_node* node;
     node = &table->table[key % table->size];
     node->key = key;

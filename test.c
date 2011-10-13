@@ -14,7 +14,7 @@ void perft_test() {
     char line[200], *pch, fen[200];
     int depth;
     uint64_t actual;
-    long expected;
+    uint64_t expected;
     unsigned total_tests, passed_tests;
     uint64_t expected_moves, actual_moves;    
     clock_t start, end;
@@ -34,7 +34,7 @@ void perft_test() {
         while(pch != NULL) {
             board_set_fen(fen);
             depth = pch[1] - '0';
-            expected = atol(&pch[3]);            
+            expected = (uint64_t)atol(&pch[3]);            
             printf("%i %9li ", depth, expected);
             actual = perft_perft(depth);
             expected_moves += expected;
@@ -45,7 +45,7 @@ void perft_test() {
                 printf("\033[32mPASS\033[0m");
                 passed_tests++;
             } else
-                printf("\033[31mFAIL (%llu)\033[0m", actual);
+                printf("\033[31mFAIL (%llu)\033[0m", (long long unsigned int)actual);
             printf("\n");
 
             pch = strtok (NULL, ";");
@@ -58,8 +58,8 @@ void perft_test() {
     timespan = (double)(end - start) / CLOCKS_PER_SEC;
     printf("# Passed       %10u\n", passed_tests);
     printf("# Total        %10u\n", total_tests);
-    printf("Moves Actual   %10llu\n", actual_moves);
-    printf("Moves Expected %10llu\n", expected_moves);
+    printf("Moves Actual   %10llu\n", (long long unsigned int)actual_moves);
+    printf("Moves Expected %10llu\n", (long long unsigned int)expected_moves);
     printf("Time           %9.3fs\n", timespan);
     printf("Moves/s        %10.1f\n", actual_moves/timespan);
 }

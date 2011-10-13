@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <time.h>
 #include "xboard.h"
 #include "board.h"
 #include "perft.h"
@@ -14,12 +15,22 @@
 
 unsigned next_move() {
 	unsigned move;
+    tree_node *child_node;
+
 	if(!out_of_opening) {
-		move = next_opening_move();
+        move = EMPTY;
+        
+		//for(i = 0; i < current_book_node->children_size; ++i) {
+        //    child_node = child
+        //}
+        child_node = book_current_node->down;
+        move = child_node->move;
+
 		if(move == EMPTY) {
 			out_of_opening = 1;
 			move = search_root();
 		} else {				
+            book_current_node = child_node;
 			printf("OPENING");
 		}
 	} else {
@@ -34,21 +45,24 @@ void xboard_run() {
     char command[1000], move_string[6];
     unsigned value, move;
     uint64_t result;
+    clock_t start, end;
+    double timespan;
     setbuf(stdout, NULL);
 
-    time = 0, otim = 0, out_of_opening = 0;    
+    n_time = 0, n_otim = 0, out_of_opening = 0;    
     zobrist_fill();
     board_create_table();
     board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     generate_distance();
-	generate_opening_book();
+	book_root_node = generate_opening_book();
+    book_current_node = book_root_node;
 
     while(1) {
-        fgets(command, 1000, stdin);
+        if(fgets(command, 1000, stdin) == NULL) return;
         move = find_move(command);
         
-        if(move) {
+        if(move != EMPTY) {
             board_add(move);            
 			move = next_move();
 			board_add(move);
@@ -65,7 +79,7 @@ void xboard_run() {
         else if(!strncmp(command, "black", 5))
             turn = BLACK;
         else if(!strncmp(command, "time", 4))
-            time = atoi(&command[5]);
+            n_time = atoi(&command[5]);
         else if(!strncmp(command, "perfttest", 9))
             perft_test();
         else if(!strncmp(command, "searchtest", 10))
@@ -75,7 +89,7 @@ void xboard_run() {
         else if(!strncmp(command, "setboard", 8))
             board_set_fen(&command[9]);
         else if(!strncmp(command, "otim", 4))
-            otim = atoi(&command[5]);
+            n_otim = atoi(&command[5]);
         else if(!strncmp(command, "display", 7) || !strncmp(command, "draw", 4))
             board_draw();
         else if(!strncmp(command, "go", 2)) {
@@ -86,22 +100,17 @@ void xboard_run() {
         } else if(!strncmp(command, "perft", 5)) {
             value = atoi(&command[6]);
             result = perft_perft(value);
-            printf("%llu\n", result);
+            printf("%llu\n", (long long unsigned int)result);
         } else if(!strncmp(command, "divide", 6)) {
             value = atoi(&command[6]);
             perft_divide(value);
         } else if(!strncmp(command, "genbook", 7)) {
-            printf("Generating opening book...\n");
+            printf("Generating opening book...");
+            start = clock();
             generate_opening_book();
-        } else if(!strncmp(command, "nextbook", 8)) {
-            move = next_opening_move();
-
-			if(move == EMPTY) {
-				printf("Out of opening book\n");
-			} else {
-				move_to_string(move, move_string);
-				printf("%s\n", move_string);
-			}
+            end = clock();
+            timespan = (double)(end - start) / CLOCKS_PER_SEC;
+            printf("DONE (%.3fs)\n", timespan);
         } else if(!strncmp(command, "help", 4)) {
             printf("Commands\n");
             printf("--------\n");
@@ -120,10 +129,9 @@ void xboard_run() {
             printf("time [INT]      Sets engine's time (in centiseconds)\n");
             printf("otim [INT]      Sets opponent's time (in centiseconds)\n");
             printf("genbook         Generates opening book\n");
-            printf("nextbook        Says next opening move\n");
             printf("exit            Exits the menu\n");
             printf("help            Gets you this magical menu\n\n");
         } else
-            printf("Unknown command: %s", command);
+            printf("Error (unknown command): %s", command);
     }
 }

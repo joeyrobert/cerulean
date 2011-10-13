@@ -8,7 +8,7 @@
 #define HASH_BETA  3
 
 typedef struct {
-    unsigned depth;
+    int depth;
     ZOBRIST key;
     uint64_t sub_nodes;
     unsigned move;
@@ -23,7 +23,7 @@ typedef struct {
 
 void hash_new(hash_table*, unsigned);
 hash_node* hash_find(hash_table*, ZOBRIST);
-void hash_add_perft(hash_table*, ZOBRIST, unsigned, uint64_t);
-void hash_add_move(hash_table* table, ZOBRIST key, unsigned depth, int score, unsigned type);
+void hash_add_perft(hash_table*, ZOBRIST, int, uint64_t);
+void hash_add_move(hash_table* table, ZOBRIST key, int depth, int score, unsigned type);
 
 #endif

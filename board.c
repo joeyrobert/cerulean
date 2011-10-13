@@ -30,7 +30,6 @@ void board_new() {
     half_move_clock = 0, full_move_number = 1;
     memset(history, EMPTY, sizeof(unsigned) * 1024 * 4);
     total_history = 0;
-	opening_no = 0;
 
     /* piece list structure */
     w_king = EMPTY; b_king = EMPTY;
@@ -166,7 +165,7 @@ void board_draw() {
     printf("Turn:    %i, Castling: 0x%X, En Passant Target: %s\n", turn, castling, ep);
     printf("Half:   %2u, Full:  %2u\n", half_move_clock, full_move_number);
     printf("W King:  %u, B King: %u\n", w_king, b_king);
-    printf("Zobrist: 0x%016llX\n", zobrist);
+    printf("Zobrist: 0x%016llX\n", (long long unsigned int)zobrist);
 }
 
 MOVTYPE gen_moves(unsigned* moves) {
