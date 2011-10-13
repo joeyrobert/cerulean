@@ -15,20 +15,24 @@
 
 unsigned next_move() {
 	unsigned move;
+    int random_steps, i;
     tree_node *child_node;
 
 	if(!out_of_opening) {
         move = EMPTY;
-        
-		//for(i = 0; i < current_book_node->children_size; ++i) {
-        //    child_node = child
-        //}
 
 		if(book_current_node->down == NULL) {
 			out_of_opening = 1;
 			move = search_root();
 		} else {				
             child_node = book_current_node->down;
+
+            /* randomly select one neighbor on this branch */
+            random_steps = rand() % book_current_node->children_size;
+            for(i = 0; i < random_steps; ++i) {
+                child_node = child_node->next;
+            }
+
             move = child_node->move;
             book_current_node = child_node;
 		}
