@@ -117,7 +117,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="board.h" />
-    <ClInclude Include="book.h" />
     <ClInclude Include="evaluate.h" />
     <ClInclude Include="perft.h" />
     <ClInclude Include="hash_table.h" />
@@ -132,7 +131,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="board.c" />
-    <ClCompile Include="book.c" />
     <ClCompile Include="evaluate.c" />
     <ClCompile Include="perft.c" />
     <ClCompile Include="hash_table.c" />

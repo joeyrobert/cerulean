@@ -6,7 +6,6 @@
 #include "move.h"
 #include "piece_list.h"
 #include "util.h"
-#include "book.h"
 
 /* piece deltas */
 int delta_knight[8] = {14, 31, 33, 18, -14, -31, -33, -18};

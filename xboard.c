@@ -11,37 +11,6 @@
 #include "zobrist.h"
 #include "search.h"
 #include "evaluate.h"
-#include "book.h"
-
-unsigned next_move() {
-	unsigned move;
-    int random_steps, i;
-    tree_node *child_node;
-
-	if(!out_of_opening) {
-        move = EMPTY;
-
-		if(book_current_node->down == NULL) {
-			out_of_opening = 1;
-			move = search_root();
-		} else {				
-            child_node = book_current_node->down;
-
-            /* randomly select one neighbor on this branch */
-            random_steps = rand() % book_current_node->children_size;
-            for(i = 0; i < random_steps; ++i) {
-                child_node = child_node->next;
-            }
-
-            move = child_node->move;
-            book_current_node = child_node;
-		}
-	} else {
-		move = search_root();
-	}
-
-	return move;
-}
 
 /* this is a very poor implementation of xboard */
 void xboard_run() {
@@ -58,8 +27,6 @@ void xboard_run() {
     board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     generate_distance();
-	book_root_node = generate_opening_book();
-    book_current_node = book_root_node;
 
     while(1) {
         if(fgets(command, 1000, stdin) == NULL) return;
@@ -67,7 +34,7 @@ void xboard_run() {
         
         if(move != EMPTY) {
             board_add(move);            
-			move = next_move();
+			move = search_root();
 			board_add(move);
 			move_to_string(move, move_string);
 			printf("move %s\n", move_string);
@@ -96,7 +63,7 @@ void xboard_run() {
         else if(!strncmp(command, "display", 7) || !strncmp(command, "draw", 4))
             board_draw();
         else if(!strncmp(command, "go", 2)) {
-            move = next_move();
+            move = search_root();
             board_add(move);
             move_to_string(move, move_string);
             printf("move %s\n", move_string);
@@ -107,13 +74,6 @@ void xboard_run() {
         } else if(!strncmp(command, "divide", 6)) {
             value = atoi(&command[6]);
             perft_divide(value);
-        } else if(!strncmp(command, "genbook", 7)) {
-            printf("Generating opening book...");
-            start = clock();
-            generate_opening_book();
-            end = clock();
-            timespan = (double)(end - start) / CLOCKS_PER_SEC;
-            printf("DONE (%.3fs)\n", timespan);
         } else if(!strncmp(command, "help", 4)) {
             printf("Commands\n");
             printf("--------\n");
@@ -131,7 +91,6 @@ void xboard_run() {
             printf("black           Sets the active colour to BLACK\n");
             printf("time [INT]      Sets engine's time (in centiseconds)\n");
             printf("otim [INT]      Sets opponent's time (in centiseconds)\n");
-            printf("genbook         Generates opening book\n");
             printf("exit            Exits the menu\n");
             printf("help            Gets you this magical menu\n\n");
         } else
