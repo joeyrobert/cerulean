@@ -146,7 +146,7 @@ void board_draw() {
     int row, column;
 	char ep[3];
 
-    printf("  +-------------------------------+\n");
+    printf("  +---+---+---+---+---+---+---+---+\n");
     for(row = 7; row >= 0; row--) {
         printf("%d |", row + 1);
         for(column = 0; column < 8; column++) {
@@ -156,7 +156,7 @@ void board_draw() {
             printf(" %c |", piece);
         }
         printf("\n");
-        printf("  +-------------------------------+\n");
+        printf("  +---+---+---+---+---+---+---+---+\n");
     }
     printf("    A   B   C   D   E   F   G   H \n\n");
 
