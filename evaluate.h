@@ -11,10 +11,11 @@ unsigned distance[240];
 unsigned vertical_distance[240];
 
 /* Piece square tables */
-int PST[7][128]; /* indexed by [PIECE][SQUARE]. Tables are white oriented. */
+int PST[2][7][128]; /* indexed by [TURN][PIECE][SQUARE]. Tables are white oriented. */
 
 void generate_distance();
 void generate_vertical_distance();
+void generate_PST();
 
 int static_evaluation(int draw);
 int material(int side);

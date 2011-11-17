@@ -26,7 +26,8 @@ void xboard_run() {
     board_create_table();
     board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
-    generate_distance();
+    /* Generation tables */
+    generate_PST();
 
     while(1) {
         if(fgets(command, 1000, stdin) == NULL) return;

@@ -34,16 +34,65 @@ void generate_vertical_distance() {
     }
 }
 
+/* Populates the PSTs.
+- Using simple linear function. Would polynomials be a better fit? Likely.
+*/
 void generate_PST() {
-    /* KING */
-    int k_rank[] = {4, 1, -2, -5, -10, -15, -25, -35};
-    int k_file[] = {40, 45, 15, -5, -5, 15, 45, 40};
     int rank, file;
 
-    /* IPPOLIT king PST */
+    /* PAWN */
+    int P_rank[] = {0, 0, 5, 10, 15, 20, 30, 0};
+    int P_file[] = {0, 0, 5, 10, 10, 5, 0, 0};
+
+    /* KING (from IPPOLIT, http://www.open-chess.org/download/file.php?id=13) */
+    int K_rank[] = {4, 1, -2, -5, -10, -15, -25, -35};
+    int K_file[] = {40, 45, 15, -5, -5, 15, 45, 40};
+
+    /* KNIGHT (from Rybka/Fruit) */
+    int N_rank[] = {-10, -5, 0, 5, 10, 15, 10, 5};
+    int N_file[] = {-20, -10, 0, 5, 5, 0, -10, -20};
+
+    /* QUEEN (Queens happy in center. I just made this up) */
+    int Q_rank[] = {-5, 0, 2, 5, 5, 2, 0, -5};
+    int Q_file[] = {-5, 0, 2, 5, 5, 2, 0, -5};
+
+    /* BISHOP (I made this up too) */
+    int B_rank[] = {-10, 0, 10, 8, 7, 7, 0, -10};
+    int B_file[] = {-10, 0, 5, 7, 7, 5, 0, -10};
+
+    /* ROOK */ 
+    int R_rank[] = {0, 0, 0, 0, 0, 0, 10, 0};
+    int R_file[] = {-5, 0, 0, 0, 0, 0, 0, -5};
+
     for(rank = 0; rank < 8; ++rank) {
         for(file = 0; file < 8; ++file) {
-            PST[KING][ROWCOLUMN2INDEX(rank, file)] = k_rank[rank] + k_file[file];
+            PST[0][KING][ROWCOLUMN2INDEX(rank, file)] = K_rank[rank] + K_file[file];
+            PST[0][KNIGHT][ROWCOLUMN2INDEX(rank, file)] = N_rank[rank] + N_file[file];
+            PST[0][QUEEN][ROWCOLUMN2INDEX(rank, file)] = Q_rank[rank] + Q_file[file];
+            PST[0][BISHOP][ROWCOLUMN2INDEX(rank, file)] = B_rank[rank] + B_file[file];
+
+            if(rank == 2 && (file == 3 && file == 4))
+                PST[0][PAWN][ROWCOLUMN2INDEX(rank, file)] = 0; /* screw d3, e3 */
+            else
+                PST[0][PAWN][ROWCOLUMN2INDEX(rank, file)] = P_rank[rank] + P_file[file];
+
+            /* Rooks should be happy in the corners. Non-symmetrical parts */
+            if((rank == 0 || rank == 7) && (file == 0 || file == 7))
+                PST[0][ROOK][ROWCOLUMN2INDEX(rank, file)] = 0;
+            else
+                PST[0][ROOK][ROWCOLUMN2INDEX(rank, file)] = R_rank[rank] + R_file[file];
+        }
+    }
+
+    /* Precompile black's lookup tables too */
+    for(rank = 0; rank < 8; ++rank) {
+        for(file = 0; file < 8; ++file) {
+            PST[1][PAWN][ROWCOLUMN2INDEX(rank, file)]   = PST[0][PAWN][ROWCOLUMN2INDEX(7-rank, file)];
+            PST[1][BISHOP][ROWCOLUMN2INDEX(rank, file)] = PST[0][BISHOP][ROWCOLUMN2INDEX(7-rank, file)];
+            PST[1][KNIGHT][ROWCOLUMN2INDEX(rank, file)] = PST[0][KNIGHT][ROWCOLUMN2INDEX(7-rank, file)];
+            PST[1][ROOK][ROWCOLUMN2INDEX(rank, file)]   = PST[0][ROOK][ROWCOLUMN2INDEX(7-rank, file)];
+            PST[1][QUEEN][ROWCOLUMN2INDEX(rank, file)]  = PST[0][QUEEN][ROWCOLUMN2INDEX(7-rank, file)];
+            PST[1][KING][ROWCOLUMN2INDEX(rank, file)]   = PST[0][KING][ROWCOLUMN2INDEX(7-rank, file)];
         }
     }
 
@@ -69,10 +118,12 @@ int static_evaluation(int draw) {
 
     for(i = 0; i < w_pieces.count; i++) {
         mat[0] += piece_values[pieces[w_pieces.index[i]]];
+        pos[0] += PST[0][pieces[w_pieces.index[i]]][w_pieces.index[i]]; 
     }
 
     for(i = 0; i < b_pieces.count; i++) {
         mat[1] += piece_values[pieces[b_pieces.index[i]]];
+        pos[1] += PST[1][pieces[b_pieces.index[i]]][b_pieces.index[i]]; 
     }
 
     totals[0] = mat[0] + mob[0] + dev[0] + pos[0];
