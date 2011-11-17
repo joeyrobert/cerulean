@@ -34,6 +34,21 @@ void generate_vertical_distance() {
     }
 }
 
+void generate_PST() {
+    /* KING */
+    int k_rank[] = {4, 1, -2, -5, -10, -15, -25, -35};
+    int k_file[] = {40, 45, 15, -5, -5, 15, 45, 40};
+    int rank, file;
+
+    /* IPPOLIT king PST */
+    for(rank = 0; rank < 8; ++rank) {
+        for(file = 0; file < 8; ++file) {
+            PST[KING][ROWCOLUMN2INDEX(rank, file)] = k_rank[rank] + k_file[file];
+        }
+    }
+
+}
+
 unsigned piece_values[] = {
     0,          /* EMPTY */
     100,        /* PAWN */
