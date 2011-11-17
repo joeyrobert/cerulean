@@ -4,16 +4,6 @@
 #include "board.h"
 #include "util.h"
 
-unsigned piece_values[] = {
-    0,          /* EMPTY */
-    100,        /* PAWN */
-    330,        /* BISHOP */
-    330,        /* KNIGHT */
-    550,        /* ROOK */
-    975,        /* QUEEN */
-    0           /* KING */
-};
-
 void generate_distance() {
     unsigned A, B;
     int i, j, diff;
@@ -44,22 +34,31 @@ void generate_vertical_distance() {
     }
 }
 
+unsigned piece_values[] = {
+    0,          /* EMPTY */
+    100,        /* PAWN */
+    330,        /* BISHOP */
+    330,        /* KNIGHT */
+    550,        /* ROOK */
+    975,        /* QUEEN */
+    0           /* KING */
+};
+
 /*
 Static Evaluation
- - are these function calls slow?
- - can we inline them if so?
+- Material evaluation (should this value be stored and constantly updated?)
 */
 int static_evaluation(int draw) {
-    int mat[2], mob[2], dev[2], pos[2], trop[2], totals[2], total;
+    unsigned i;
+    int mat[2] = {0}, mob[2] = {0}, dev[2] = {0}, pos[2] = {0}, trop[2] = {0}, totals[2] = {0}, total;
 
-    mat[0] = material(WHITE);
-    mat[1] = material(BLACK);
-    mob[0] = mobility(WHITE);
-    mob[1] = mobility(BLACK);
-    dev[0] = development(WHITE);
-    dev[1] = development(BLACK);
-    pos[0] = positioning(WHITE);
-    pos[1] = positioning(BLACK);
+    for(i = 0; i < w_pieces.count; i++) {
+        mat[0] += piece_values[pieces[w_pieces.index[i]]];
+    }
+
+    for(i = 0; i < b_pieces.count; i++) {
+        mat[1] += piece_values[pieces[b_pieces.index[i]]];
+    }
 
     totals[0] = mat[0] + mob[0] + dev[0] + pos[0];
     totals[1] = mat[1] + mob[1] + dev[1] + pos[1];
@@ -77,64 +76,6 @@ int static_evaluation(int draw) {
     }
 
     return total;
-}
-
-/*
-Piece Evaluation:
- - Sums piece_values for each side.
- - +ve for both black and white
-*/
-int material(int side) {
-    unsigned i, result;
-    result = 0;
-
-    if(side == WHITE) { 
-        for(i = 0; i < w_pieces.count; i++) {
-            result += piece_values[pieces[w_pieces.index[i]]];
-        }
-    } else {
-        for(i = 0; i < b_pieces.count; i++) {
-            result += piece_values[pieces[b_pieces.index[i]]];
-        }
-    }
-
-    return result;
-}
-
-/*
-Mobility:
- - Knight distance to center
-
-TODO:
- - Knight outposts
- - Bishop effectiveness
-*/
-int knight_effectiveness[] = {10, 8, 3, 0};
-int mobility(int side) {
-    unsigned i, result, index, distance_to_center;
-    result = 0;
-    
-    if(side == WHITE) {
-        for(i = 0; i < w_pieces_by_type[KNIGHT].count; i++) {
-            index = w_pieces_by_type[KNIGHT].index[i];
-            distance_to_center = MIN(
-                MIN(distance[0x77+index-51], distance[0x77+index-52]),
-                MIN(distance[0x77+index-67], distance[0x77+index-68])
-            );
-            result += knight_effectiveness[distance_to_center];
-        }
-    } else {
-        for(i = 0; i < b_pieces_by_type[KNIGHT].count; i++) {
-            index = b_pieces_by_type[KNIGHT].index[i];
-            distance_to_center = MIN(
-                MIN(distance[0x77+index-51], distance[0x77+index-52]),
-                MIN(distance[0x77+index-67], distance[0x77+index-68])
-            );
-            result += knight_effectiveness[distance_to_center];
-        }
-    }
-
-    return result;
 }
 
 /*

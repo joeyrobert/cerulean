@@ -5,31 +5,38 @@
 #include "zobrist.h"
 #include "hash_table.h"
 
-#define WHITE        1
-#define BLACK        -1
 #define NO_ENPASSANT 128 /* important for zobrist */
 #define OFF          137 /* used in reverse list */
 #define EMPTY        0
-
-/* Pieces (important for zobrist) */
-#define PAWN   1
-#define BISHOP 2
-#define KNIGHT 3
-#define ROOK   4
-#define QUEEN  5
-#define KING   6
-
-/* Castling */
-#define CASTLE_WK 1
-#define CASTLE_WQ 2
-#define CASTLE_BK 4
-#define CASTLE_BQ 8
 
 /* Macros, zero indexed */
 #define ROWCOLUMN2INDEX(row, column)  (row * 16 + column)
 #define INDEX2ROW(index)              (index >> 4)
 #define INDEX2COLUMN(index)           (index & 7)
 #define LEGAL_MOVE(move)              ((move & 0x88) == 0 && move < 120)
+
+enum Turn {
+    WHITE=1,
+    BLACK=-1
+};
+
+/* Pieces (important for zobrist) */
+enum Pieces {
+    PAWN=1,
+    BISHOP,
+    KNIGHT,
+    ROOK,
+    QUEEN,
+    KING
+};
+
+/* Castling */
+enum Castling {
+    CASTLE_WK=1,
+    CASTLE_WQ=2,
+    CASTLE_BK=4,
+    CASTLE_BQ=8
+};
 
 unsigned pieces[128];
 int colours[128];

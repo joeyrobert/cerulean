@@ -10,6 +10,9 @@
 unsigned distance[240];
 unsigned vertical_distance[240];
 
+/* Piece square tables */
+int PST[7][128]; /* indexed by [PIECE][SQUARE]. Tables are white oriented. */
+
 void generate_distance();
 void generate_vertical_distance();
 
