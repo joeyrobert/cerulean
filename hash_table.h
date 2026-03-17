@@ -2,6 +2,7 @@
 #define HASH_TABLE_H
 
 #include "zobrist.h"
+#include <stdint.h>
 
 #define HASH_EXACT 1
 #define HASH_ALPHA 2
@@ -11,19 +12,19 @@ typedef struct {
     int depth;
     ZOBRIST key;
     uint64_t sub_nodes;
-    unsigned move;
+    unsigned move;      /* best move found at this position */
     unsigned type;      /* HASH_ALPHA, HASH_BETA or HASH_EXACT */
     int score;
 } hash_node;
 
 typedef struct {
     uint64_t size;
-    hash_node *table;   /* this can grow */
+    hash_node *table;
 } hash_table;
 
 void hash_new(hash_table*, unsigned);
 hash_node* hash_find(hash_table*, ZOBRIST);
 void hash_add_perft(hash_table*, ZOBRIST, int, uint64_t);
-void hash_add_move(hash_table* table, ZOBRIST key, int depth, int score, unsigned type);
+void hash_add_move(hash_table *table, ZOBRIST key, int depth, int score, unsigned type, unsigned best_move);
 
 #endif
