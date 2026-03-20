@@ -867,6 +867,30 @@ void board_enpassant(unsigned new_enpassant_target) {
     }
 }
 
+/* Null move: flip side to move, clear en passant.
+ * Saved state: zobrist_history[total_history] holds previous zobrist,
+ * history[total_history][2] holds previous en passant. */
+void board_do_null_move(void) {
+    zobrist_history[total_history] = zobrist;
+    history[total_history][2] = enpassant_target;
+    total_history++;
+    /* Clear en passant */
+    if (enpassant_target != NO_ENPASSANT) {
+        zobrist ^= zobrist_enpassant[enpassant_target];
+        zobrist ^= zobrist_enpassant[NO_ENPASSANT];
+        enpassant_target = NO_ENPASSANT;
+    }
+    turn = -1 * turn;
+    zobrist ^= zobrist_side;
+}
+
+void board_undo_null_move(void) {
+    --total_history;
+    turn = -1 * turn;
+    enpassant_target = history[total_history][2];
+    zobrist = zobrist_history[total_history];
+}
+
 /* Generates a clean zobrist from a board */
 ZOBRIST board_gen_zobrist() {
     ZOBRIST new_zobrist;

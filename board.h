@@ -82,5 +82,7 @@ void move_piece(unsigned, unsigned);
 void move_piece_discreetly(unsigned, unsigned);
 unsigned is_in_check(int);
 unsigned is_attacked(unsigned, int);
+void board_do_null_move(void);
+void board_undo_null_move(void);
 
 #endif

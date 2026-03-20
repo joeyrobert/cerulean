@@ -26,6 +26,9 @@ void hash_add_perft(hash_table* table, ZOBRIST key, int depth, uint64_t sub_node
 
 void hash_add_move(hash_table* table, ZOBRIST key, int depth, int score, unsigned type, unsigned best_move) {
     hash_node* node = &table->table[key & (table->size - 1)];
+    /* Depth replacement: prefer deeper entries; always replace on key collision */
+    if (node->key == key && depth < node->depth)
+        return;
     node->key = key;
     node->depth = depth;
     node->score = score;

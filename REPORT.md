@@ -215,16 +215,15 @@ Test suites: arasan12 (215), ecmgcp (183), wac (300), sbd (134), eet (100), pet 
 
 | Engine | Time/move | Score | Notes |
 |---|---|---|---|
-| **cerulean C** | 100ms | **4892 / 10000** | Single-threaded |
-| **cerulean C** | 500ms | **4896 / 10000** | Single-threaded |
-| **cerulean C** | 1s | **4958 / 10000** | Single-threaded |
-| ceruleanjs | 1s | 5105 / 10000 | 12 parallel workers, best-ever run |
+| **cerulean C (final)** | 100ms | **5214 / 10000** | Single-threaded, all optimizations |
+| **cerulean C (final)** | 500ms | **5395 / 10000** | Single-threaded, all optimizations |
+| **cerulean C (final)** | 1s | **5539 / 10000** | Single-threaded, all optimizations |
+| cerulean C (initial port) | 100ms | 4892 / 10000 | Before speed improvements |
+| cerulean C (initial port) | 1s | 4958 / 10000 | Before speed improvements |
+| ceruleanjs (best) | 1s | 5105 / 10000 | 12 parallel workers |
 | ceruleanjs (baseline) | 1s | 4483 / 10000 | Original, before eval tuning |
 
-**Gap**: ~150 points at 1s/move. ceruleanjs accumulated 60 benchmark runs of eval tuning (eval_params.json);
-those constant tweaks were carried over in bulk but the JS version had additional iterative tuning that
-could be replicated in C. The C engine is also single-threaded — parallelism accounts for some of the
-ceruleanjs advantage.
+**Final result**: cerulean C **exceeds** ceruleanjs on STS by ~434 points at 1s/move, single-threaded vs 12 parallel workers.
 
 ### Node Speed Comparison
 
@@ -251,6 +250,50 @@ The C engine is **~25–40× faster** at raw move generation.
 | Memory management | Node.js GC | Manual malloc/calloc |
 | Zobrist keys | Polyglot format (pair of uint32) | MT64 (single uint64) |
 | Test framework | Mocha (JS) | Custom C test runner |
+
+---
+
+## Speed Improvements Applied
+
+All improvements measured with `sts 0.1` (100ms/position) unless noted.
+
+| Change | STS@100ms | Notes |
+|---|---|---|
+| Initial port (baseline) | 4892 | After game_phase/closed_game bug fixes |
+| + TT depth replacement | 4898 | Don't overwrite deeper TT entries with shallow ones |
+| + Futility before board_add | ~4960 | Avoid make/unmake for depth-1 pruned quiet moves |
+| + Null move pruning | 5139 | Skip turn + see if opponent beats beta (depth≥3, stand_pat≥beta−150) |
+| + Check extensions | **5214** | Extend 1 ply for moves that give check |
+| **@ 500ms** | **5395** | |
+| **@ 1s** | **5539** | |
+
+### Null Move Pruning details
+```c
+/* In search(), before move loop */
+int our_pieces = count of our knights + bishops + rooks + queens;
+if (depth >= 3 && our_pieces > 0 && stand_pat >= beta - 150 && !is_in_check(turn)) {
+    int R = (depth >= 6) ? 3 : 2;
+    board_do_null_move();
+    score = -search(depth - 1 - R, -beta, -beta + 1, ply + 1);
+    board_undo_null_move();
+    if (score >= beta) return beta;
+}
+```
+`stand_pat >= beta - 150` guards against zugzwang-heavy tactical positions while still allowing
+the pruning in clearly strong positions. Without this guard, STS dropped due to incorrect pruning
+in sharp tactical lines.
+
+### Check Extension details
+```c
+int gives_check = is_in_check(turn);  /* after board_add — checks if we gave check */
+int extension = gives_check ? 1 : 0;
+/* LMR also skips check-giving moves */
+if (!extension && alpha_move && i > 5 && !is_capture && !gives_check && depth >= 4)
+    reduction = 1;
+int sdepth = depth - 1 + extension - reduction;
+```
+Unlimited check extensions increase search depth along forcing lines. Combined with NMP's tree
+pruning, the net effect is dramatically deeper search in the time budget.
 
 ---
 

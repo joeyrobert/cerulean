@@ -273,6 +273,26 @@ int search(int depth, int alpha, int beta, int ply) {
     if (depth == 1 && stand_pat + 350 < alpha)
         return qsearch(alpha, beta, ply);
 
+    /* Null move pruning: skip our turn and see if opponent can beat beta.
+     * Only when not in check, have non-pawn pieces (avoid zugzwang), and
+     * static eval suggests we're above beta (we're winning). */
+    {
+        int our_pieces = (turn == WHITE)
+            ? (int)(w_pieces_by_type[KNIGHT].count + w_pieces_by_type[BISHOP].count +
+                    w_pieces_by_type[ROOK].count   + w_pieces_by_type[QUEEN].count)
+            : (int)(b_pieces_by_type[KNIGHT].count + b_pieces_by_type[BISHOP].count +
+                    b_pieces_by_type[ROOK].count   + b_pieces_by_type[QUEEN].count);
+        if (depth >= 3 && our_pieces > 0 && stand_pat >= beta - 150 && !is_in_check(turn)) {
+            int R = (depth >= 6) ? 3 : 2;
+            board_do_null_move();
+            score = -search(depth - 1 - R, -beta, -beta + 1, ply + 1);
+            board_undo_null_move();
+            if (ended_early) return 0;
+            if (score >= beta)
+                return beta;
+        }
+    }
+
     /* Internal Iterative Deepening */
     if (!tt_move && depth >= 7) {
         search(depth - 1, alpha, beta, ply);
@@ -303,23 +323,26 @@ int search(int depth, int alpha, int beta, int ply) {
         int hidx = hist_index(m);
         int ti   = turn_idx();
 
-        if (!board_add(m)) continue;
-        searched_moves++;
-        nodes_searched++;
-
-        /* Futility pruning at depth 1 */
+        /* Futility pruning at depth 1: check before make/unmake */
         if (depth == 1 && !is_capture && !is_promotion && stand_pat + 110 < alpha) {
-            board_subtract();
             butterfly_heuristic[ti][hidx]++;
             continue;
         }
 
-        /* LMR */
+        if (!board_add(m)) continue;
+        searched_moves++;
+        nodes_searched++;
+
+        /* Check extension: extend 1 ply when move gives check */
+        int gives_check = is_in_check(turn);
+        int extension = gives_check ? 1 : 0;
+
+        /* LMR: don't reduce checks or check-givers */
         int reduction = 0;
-        if (alpha_move && (int)i > 5 && !is_capture && !is_in_check(turn) && depth >= 4)
+        if (!extension && alpha_move && (int)i > 5 && !is_capture && !gives_check && depth >= 4)
             reduction = 1;
 
-        int sdepth = depth - 1 - reduction;
+        int sdepth = depth - 1 + extension - reduction;
 
         if (!alpha_move) {
             score = -search(sdepth, -beta, -alpha, ply + 1);
