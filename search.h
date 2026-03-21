@@ -40,7 +40,7 @@ int max_depth;
 
 long get_time_ms(void);
 int qsearch(int alpha, int beta, int ply);
-int search(int depth, int alpha, int beta, int ply);
+int search(int depth, int alpha, int beta, int ply, unsigned excluded_move);
 unsigned search_root(void);
 unsigned iterative_deepening(int time_ms, int max_dep, int hide_display);
 void moves_sort(unsigned *moves, int *scores, unsigned move_count);

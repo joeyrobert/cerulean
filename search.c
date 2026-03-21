@@ -231,7 +231,7 @@ int qsearch(int alpha, int beta, int ply) {
 /* -----------------------------------------------------------------------
  * Main search (negamax with alpha-beta, PVS, LMR)
  * ----------------------------------------------------------------------- */
-int search(int depth, int alpha, int beta, int ply) {
+int search(int depth, int alpha, int beta, int ply, unsigned excluded_move) {
     unsigned moves[256], count, i;
     int scores[256];
     int score, searched_moves, stand_pat;
@@ -285,7 +285,7 @@ int search(int depth, int alpha, int beta, int ply) {
         if (depth >= 3 && our_pieces > 0 && stand_pat >= beta - 150 && !is_in_check(turn)) {
             int R = (depth >= 6) ? 3 : 2;
             board_do_null_move();
-            score = -search(depth - 1 - R, -beta, -beta + 1, ply + 1);
+            score = -search(depth - 1 - R, -beta, -beta + 1, ply + 1, 0);
             board_undo_null_move();
             if (ended_early) return 0;
             if (score >= beta)
@@ -295,10 +295,28 @@ int search(int depth, int alpha, int beta, int ply) {
 
     /* Internal Iterative Deepening */
     if (!tt_move && depth >= 7) {
-        search(depth - 1, alpha, beta, ply);
+        search(depth - 1, alpha, beta, ply, 0);
         node = hash_find(table, zobrist);
         if (node && node->move) tt_move = node->move;
         if (ended_early) return 0;
+    }
+
+    /* Singular extension probe: if TT move is much better than all others,
+     * mark it singular so we extend when we search it. */
+    int singular_tt_move = 0;
+    if (depth >= 8
+            && tt_move != 0
+            && tt_depth >= depth - 3
+            && tt_type != HASH_ALPHA
+            && excluded_move == 0
+            && tt_score < MATE_VALUE - 1000
+            && tt_score > -(MATE_VALUE - 1000)) {
+        int s_beta  = tt_score - 2 * depth;
+        int s_depth = (depth - 1) / 2;
+        int s_score = search(s_depth, s_beta - 1, s_beta, ply, tt_move);
+        if (!ended_early && s_score < s_beta)
+            singular_tt_move = 1;
+        ended_early = 0;  /* singular probe stopping early is fine; continue main search */
     }
 
     count = gen_moves(moves);
@@ -318,6 +336,10 @@ int search(int depth, int alpha, int beta, int ply) {
     for (i = 0; i < count; i++) {
         pick_move(moves, scores, i, count);
         unsigned m = moves[i];
+
+        /* Skip excluded move in singular probe */
+        if (excluded_move && m == excluded_move) continue;
+
         int is_capture   = (m & BITS_CAPTURE) || (m & BITS_ENPASSANT);
         int is_promotion = (m & BITS_PROMOTE) != 0;
         int hidx = hist_index(m);
@@ -337,6 +359,10 @@ int search(int depth, int alpha, int beta, int ply) {
         int gives_check = is_in_check(turn);
         int extension = gives_check ? 1 : 0;
 
+        /* Singular extension: TT move is much better than all others */
+        if (singular_tt_move && m == tt_move && !extension)
+            extension = 1;
+
         /* LMR: don't reduce checks or check-givers */
         int reduction = 0;
         if (!extension && alpha_move && (int)i > 5 && !is_capture && !gives_check && depth >= 4)
@@ -345,17 +371,17 @@ int search(int depth, int alpha, int beta, int ply) {
         int sdepth = depth - 1 + extension - reduction;
 
         if (!alpha_move) {
-            score = -search(sdepth, -beta, -alpha, ply + 1);
+            score = -search(sdepth, -beta, -alpha, ply + 1, 0);
         } else {
             /* Null-window search */
-            score = -search(sdepth, -alpha - 1, -alpha, ply + 1);
+            score = -search(sdepth, -alpha - 1, -alpha, ply + 1, 0);
             if (!ended_early && score > alpha)
-                score = -search(depth - 1, -beta, -alpha, ply + 1);
+                score = -search(depth - 1, -beta, -alpha, ply + 1, 0);
         }
 
         /* Re-search with full depth if LMR failed high */
         if (!ended_early && reduction > 0 && score >= beta)
-            score = -search(depth - 1, -beta, -alpha, ply + 1);
+            score = -search(depth - 1, -beta, -alpha, ply + 1, 0);
 
         board_subtract();
         butterfly_heuristic[ti][hidx]++;
@@ -458,11 +484,11 @@ unsigned iterative_deepening(int time_ms, int max_dep, int hide_display) {
             beta  =  INFINITE;
         }
 
-        score = search(depth, alpha, beta, 0);
+        score = search(depth, alpha, beta, 0, 0);
 
         if (!ended_early && (score <= alpha || score >= beta)) {
             /* Re-search with full window */
-            score = search(depth, -INFINITE, INFINITE, 0);
+            score = search(depth, -INFINITE, INFINITE, 0, 0);
         }
 
         if (ended_early) {

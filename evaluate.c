@@ -206,6 +206,109 @@ static double game_phase(void) {
     return (24.0 - check) / 24.0;
 }
 
+/* Delta tables (defined in board.c / move.c) */
+extern int delta_knight[8];
+extern int delta_king[8];
+extern int delta_diagonal[4];
+extern int delta_vertical[4];
+
+/* Tapered eval interpolation: phase=1.0 → early, phase=0.0 → late */
+static inline int eval_lerp(int early, int late, double phase) {
+    return (int)(phase * early + (1.0 - phase) * late);
+}
+
+/* King safety: non-linear penalty table indexed by attack units (0..27) */
+static const int KING_SAFETY_TABLE[28] = {
+      0,   0,   0,  10,  20,  40,  60,  80,
+    100, 130, 160, 190, 220, 260, 300, 340,
+    380, 420, 460, 500, 500, 500, 500, 500,
+    500, 500, 500, 500
+};
+
+/* Returns total attack units targeting king_idx's zone from attacker_col_idx pieces.
+   Returns 0 if fewer than 2 distinct attackers (no coordinated danger). */
+static int king_attack_units(unsigned king_idx, int attacker_col_idx) {
+    piece_list *alist = (attacker_col_idx == 0) ? &w_pieces : &b_pieces;
+    int units = 0, attackers = 0;
+    int krow = (int)INDEX2ROW(king_idx);
+    int kcol = (int)INDEX2COLUMN(king_idx);
+
+    for (int i = 0; i < (int)alist->count; i++) {
+        unsigned aidx = alist->index[i];
+        unsigned apiece = pieces[aidx];
+        if (apiece == PAWN || apiece == KING || apiece == EMPTY) continue;
+
+        int hits_zone = 0;
+
+        /* Check if square ni is in king zone (within chebyshev dist 1 of king) */
+#define IN_KING_ZONE(ni) \
+    (abs((int)INDEX2ROW((unsigned)(ni))    - krow) <= 1 && \
+     abs((int)INDEX2COLUMN((unsigned)(ni)) - kcol) <= 1)
+
+        switch (apiece) {
+        case KNIGHT:
+            for (int d = 0; d < 8 && !hits_zone; d++) {
+                int ni = (int)aidx + delta_knight[d];
+                if (LEGAL_MOVE((unsigned)ni) && IN_KING_ZONE(ni))
+                    hits_zone = 1;
+            }
+            if (hits_zone) { units += KING_ATTACK_WEIGHT_KNIGHT; attackers++; }
+            break;
+
+        case BISHOP:
+            for (int d = 0; d < 4 && !hits_zone; d++) {
+                int ni = (int)aidx;
+                while (1) {
+                    ni += delta_diagonal[d];
+                    if (!LEGAL_MOVE((unsigned)ni)) break;
+                    if (IN_KING_ZONE(ni)) { hits_zone = 1; break; }
+                    if (pieces[(unsigned)ni] != EMPTY) break;
+                }
+            }
+            if (hits_zone) { units += KING_ATTACK_WEIGHT_BISHOP; attackers++; }
+            break;
+
+        case ROOK:
+            for (int d = 0; d < 4 && !hits_zone; d++) {
+                int ni = (int)aidx;
+                while (1) {
+                    ni += delta_vertical[d];
+                    if (!LEGAL_MOVE((unsigned)ni)) break;
+                    if (IN_KING_ZONE(ni)) { hits_zone = 1; break; }
+                    if (pieces[(unsigned)ni] != EMPTY) break;
+                }
+            }
+            if (hits_zone) { units += KING_ATTACK_WEIGHT_ROOK; attackers++; }
+            break;
+
+        case QUEEN:
+            for (int d = 0; d < 4 && !hits_zone; d++) {
+                int ni = (int)aidx;
+                while (1) {
+                    ni += delta_diagonal[d];
+                    if (!LEGAL_MOVE((unsigned)ni)) break;
+                    if (IN_KING_ZONE(ni)) { hits_zone = 1; break; }
+                    if (pieces[(unsigned)ni] != EMPTY) break;
+                }
+            }
+            for (int d = 0; d < 4 && !hits_zone; d++) {
+                int ni = (int)aidx;
+                while (1) {
+                    ni += delta_vertical[d];
+                    if (!LEGAL_MOVE((unsigned)ni)) break;
+                    if (IN_KING_ZONE(ni)) { hits_zone = 1; break; }
+                    if (pieces[(unsigned)ni] != EMPTY) break;
+                }
+            }
+            if (hits_zone) { units += KING_ATTACK_WEIGHT_QUEEN; attackers++; }
+            break;
+        }
+#undef IN_KING_ZONE
+    }
+
+    return (attackers >= 2) ? units : 0;
+}
+
 /* Closed game: 1.0 = fully closed, 0.0 = fully open */
 static double closed_game(void) {
     int total = (int)(w_pieces_by_type[PAWN].count + b_pieces_by_type[PAWN].count);
@@ -215,11 +318,6 @@ static double closed_game(void) {
 /* -----------------------------------------------------------------------
  * Mobility helpers
  * ----------------------------------------------------------------------- */
-extern int delta_knight[8];
-extern int delta_king[8];
-extern int delta_diagonal[4];
-extern int delta_vertical[4];
-
 static int delta_move_count(int *deltas, int n, unsigned idx, int piece_color) {
     int count = 0, d, ni;
     for (d = 0; d < n; d++) {
@@ -431,8 +529,9 @@ int static_evaluation(int display) {
                 break;
 
             case KNIGHT: {
-                /* Mobility */
-                mobility[col_idx] += KNIGHT_MOBILITY_BONUS *
+                /* Mobility (tapered) */
+                mobility[col_idx] += eval_lerp(KNIGHT_MOBILITY_BONUS_EARLY,
+                                               KNIGHT_MOBILITY_BONUS_LATE, gphase) *
                     delta_move_count(delta_knight, 8, idx, fc);
 
                 /* Center control bonus (JS: pstIndex & 7 in 2..5, pstIndex in 18..45) */
@@ -443,7 +542,7 @@ int static_evaluation(int display) {
                 if (cgame >= 0.5)
                     piece_bonus[col_idx] += KNIGHT_CLOSED_GAME_BONUS;
 
-                /* Outpost: friendly pawn diagonally forward */
+                /* Outpost: friendly pawn diagonally forward (tapered) */
                 if (rank_offset > 3) {
                     int fwd = (col_idx == 0) ? 1 : -1;
                     int fl = (int)idx + fwd * 15;
@@ -452,7 +551,8 @@ int static_evaluation(int display) {
                          pieces[(unsigned)fl] == PAWN && colours[(unsigned)fl] == fc) ||
                         (fr >= 0 && (((unsigned)fr) & 0x88) == 0 &&
                          pieces[(unsigned)fr] == PAWN && colours[(unsigned)fr] == fc))
-                        piece_bonus[col_idx] += KNIGHT_OUTPOST_BONUS;
+                        piece_bonus[col_idx] += eval_lerp(KNIGHT_OUTPOST_BONUS_EARLY,
+                                                          KNIGHT_OUTPOST_BONUS_LATE, gphase);
                 }
 
                 /* Rim penalty */
@@ -462,27 +562,32 @@ int static_evaluation(int display) {
             }
 
             case BISHOP: {
-                /* Mobility */
-                mobility[col_idx] += BISHOP_MOBILITY_BONUS *
+                /* Mobility (tapered) */
+                mobility[col_idx] += eval_lerp(BISHOP_MOBILITY_BONUS_EARLY,
+                                               BISHOP_MOBILITY_BONUS_LATE, gphase) *
                     sliding_move_count(delta_diagonal, 4, idx, fc);
 
                 /* Center control */
                 if (col >= 2 && col <= 5 && pst_idx >= 18 && pst_idx <= 45)
                     center[col_idx] += CENTER_CONTROL_BONUS;
 
-                /* Bishop pair */
+                /* Bishop pair (tapered) */
                 if (w_pieces_by_type[BISHOP].count >= 2 && col_idx == 0) {
-                    piece_bonus[col_idx] += BISHOP_DOUBLE_BONUS;
+                    piece_bonus[col_idx] += eval_lerp(BISHOP_DOUBLE_BONUS_EARLY,
+                                                      BISHOP_DOUBLE_BONUS_LATE, gphase);
                     if (w_pieces_by_type[BISHOP].count == 2 &&
                         SQ_COLOR(w_pieces_by_type[BISHOP].index[0]) !=
                         SQ_COLOR(w_pieces_by_type[BISHOP].index[1]))
-                        piece_bonus[col_idx] += BISHOP_OPPOSITE_COLOR_BONUS;
+                        piece_bonus[col_idx] += eval_lerp(BISHOP_OPPOSITE_COLOR_BONUS_EARLY,
+                                                          BISHOP_OPPOSITE_COLOR_BONUS_LATE, gphase);
                 } else if (b_pieces_by_type[BISHOP].count >= 2 && col_idx == 1) {
-                    piece_bonus[col_idx] += BISHOP_DOUBLE_BONUS;
+                    piece_bonus[col_idx] += eval_lerp(BISHOP_DOUBLE_BONUS_EARLY,
+                                                      BISHOP_DOUBLE_BONUS_LATE, gphase);
                     if (b_pieces_by_type[BISHOP].count == 2 &&
                         SQ_COLOR(b_pieces_by_type[BISHOP].index[0]) !=
                         SQ_COLOR(b_pieces_by_type[BISHOP].index[1]))
-                        piece_bonus[col_idx] += BISHOP_OPPOSITE_COLOR_BONUS;
+                        piece_bonus[col_idx] += eval_lerp(BISHOP_OPPOSITE_COLOR_BONUS_EARLY,
+                                                          BISHOP_OPPOSITE_COLOR_BONUS_LATE, gphase);
                 }
 
                 /* Open game bonus */
@@ -496,30 +601,34 @@ int static_evaluation(int display) {
             }
 
             case ROOK: {
-                /* Mobility */
-                mobility[col_idx] += ROOK_MOBILITY_BONUS *
+                /* Mobility (tapered) */
+                mobility[col_idx] += eval_lerp(ROOK_MOBILITY_BONUS_EARLY,
+                                               ROOK_MOBILITY_BONUS_LATE, gphase) *
                     sliding_move_count(delta_vertical, 4, idx, fc);
 
-                /* Open/semi-open file */
+                /* Open/semi-open file (tapered) */
                 int our_adv  = pawn_rank[col_idx][col];
                 int their_adv = pawn_rank[1-col_idx][col];
 
                 if (our_adv == 0) {   /* no friendly pawn on this file */
                     if (their_adv == 0) {
-                        piece_bonus[col_idx] += ROOK_OPEN_FILE_BONUS;
+                        piece_bonus[col_idx] += eval_lerp(ROOK_OPEN_FILE_BONUS_EARLY,
+                                                          ROOK_OPEN_FILE_BONUS_LATE, gphase);
                         /* vs enemy king */
                         unsigned eking = (col_idx == 0) ? b_king : w_king;
                         int ekcol = INDEX2COLUMN(eking);
                         if (abs(ekcol - col) <= 1)
                             piece_bonus[col_idx] += ROOK_OPEN_FILE_VS_KING_BONUS;
                     } else {
-                        piece_bonus[col_idx] += ROOK_SEMI_OPEN_FILE_BONUS;
+                        piece_bonus[col_idx] += eval_lerp(ROOK_SEMI_OPEN_FILE_BONUS_EARLY,
+                                                          ROOK_SEMI_OPEN_FILE_BONUS_LATE, gphase);
                     }
                 }
 
-                /* Rook on 7th (rank_offset == 6) */
+                /* Rook on 7th (tapered) */
                 if (rank_offset == 6)
-                    piece_bonus[col_idx] += ROOK_ON_SEVENTH_BONUS;
+                    piece_bonus[col_idx] += eval_lerp(ROOK_ON_SEVENTH_BONUS_EARLY,
+                                                      ROOK_ON_SEVENTH_BONUS_LATE, gphase);
 
                 /* Rook behind passed pawn */
                 if (our_adv >= 4 && (their_adv == 0 || their_adv < our_adv)) {
@@ -532,8 +641,9 @@ int static_evaluation(int display) {
             }
 
             case QUEEN: {
-                /* Mobility */
-                mobility[col_idx] += QUEEN_MOBILITY_BONUS *
+                /* Mobility (tapered) */
+                mobility[col_idx] += eval_lerp(QUEEN_MOBILITY_BONUS_EARLY,
+                                               QUEEN_MOBILITY_BONUS_LATE, gphase) *
                     (sliding_move_count(delta_diagonal, 4, idx, fc) +
                      sliding_move_count(delta_vertical, 4, idx, fc));
 
@@ -579,6 +689,15 @@ int static_evaluation(int display) {
                     int dr = abs(2*row - 7);
                     /* 4 - centerDist = (8 - dc - dr) / 2 */
                     piece_bonus[col_idx] += KING_ACTIVITY_BONUS * (8 - dc - dr) / 2;
+                }
+
+                /* King safety: penalize enemy piece attacks on our king zone */
+                {
+                    int atk = king_attack_units(idx, 1 - col_idx);
+                    if (atk > 0) {
+                        int ti = (atk < 28) ? atk : 27;
+                        piece_bonus[col_idx] -= (int)(KING_SAFETY_TABLE[ti] * gphase);
+                    }
                 }
                 break;
             }
