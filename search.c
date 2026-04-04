@@ -13,8 +13,21 @@
 #include "search.h"
 #include "board.h"
 #include "evaluate.h"
+#include "nnue.h"
 #include "util.h"
 #include "move.h"
+
+static int razoring_margin(void) {
+    return nnue_can_evaluate() ? 350 : 350;
+}
+
+static int futility_margin(void) {
+    return nnue_can_evaluate() ? 110 : 110;
+}
+
+static int delta_margin(void) {
+    return nnue_can_evaluate() ? 350 : 350;
+}
 
 /* -----------------------------------------------------------------------
  * Timing helpers
@@ -213,7 +226,7 @@ int qsearch(int alpha, int beta, int ply) {
         int cap_val = 0;
         if (m & BITS_ENPASSANT) cap_val = piece_values[PAWN];
         else if (m & BITS_CAPTURE) cap_val = piece_values[pieces[to]];
-        if (cap_val > 0 && stand_pat + cap_val + 350 < alpha) continue;
+        if (cap_val > 0 && stand_pat + cap_val + delta_margin() < alpha) continue;
 
         if (!board_add(m)) continue;
         nodes_searched++;
@@ -270,7 +283,7 @@ int search(int depth, int alpha, int beta, int ply, unsigned excluded_move) {
     stand_pat = static_evaluation(0);
 
     /* Razoring (depth 1) */
-    if (depth == 1 && stand_pat + 350 < alpha)
+    if (depth == 1 && stand_pat + razoring_margin() < alpha)
         return qsearch(alpha, beta, ply);
 
     /* Null move pruning: skip our turn and see if opponent can beat beta.
@@ -346,7 +359,7 @@ int search(int depth, int alpha, int beta, int ply, unsigned excluded_move) {
         int ti   = turn_idx();
 
         /* Futility pruning at depth 1: check before make/unmake */
-        if (depth == 1 && !is_capture && !is_promotion && stand_pat + 110 < alpha) {
+        if (depth == 1 && !is_capture && !is_promotion && stand_pat + futility_margin() < alpha) {
             butterfly_heuristic[ti][hidx]++;
             continue;
         }

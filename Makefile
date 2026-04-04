@@ -37,4 +37,13 @@ test: all
 	@echo "Running search test suite..."
 	echo "searchtest" | ./$(TARGET)
 
-.PHONY: all clean perfttest searchtest sts sts-fast test
+datagen: all
+	./$(TARGET) --datagen --games $(or $(GAMES),1000) --output $(or $(OUTPUT),data/gen.bin)
+
+train: all
+	./$(TARGET) --train --data $(or $(DATA),data/gen.bin) --net $(or $(NET),nets/default.nnue)
+
+sts-eval: all
+	./$(TARGET) --sts-eval --net $(or $(NET),nets/default.nnue)
+
+.PHONY: all clean perfttest searchtest sts sts-fast test datagen train sts-eval

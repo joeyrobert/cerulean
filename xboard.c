@@ -19,6 +19,7 @@
 #include "zobrist.h"
 #include "search.h"
 #include "evaluate.h"
+#include "nnue.h"
 #include "sts.h"
 
 #define VERSION "2.0.0"
@@ -262,7 +263,51 @@ static void cmd_moves(void) {
 }
 
 static void cmd_evaluate(void) {
-    static_evaluation(1);
+    hce_evaluation(1);
+    if (nnue_can_evaluate())
+        printf("NNUE.........%5d (side-to-move perspective)\n", nnue_evaluate());
+}
+
+static void cmd_nnue(const char *arg) {
+    if (!arg || !arg[0] || strcmp(arg, "status") == 0 || strcmp(arg, "info") == 0) {
+        printf("NNUE loaded:  %s\n", nnue_is_loaded() ? "yes" : "no");
+        printf("NNUE enabled: %s\n", nnue_is_enabled() ? "yes" : "no");
+        printf("NNUE path:    %s\n", nnue_loaded_path() ? nnue_loaded_path() : "(none)");
+        return;
+    }
+
+    if (strcmp(arg, "off") == 0) {
+        nnue_set_enabled(0);
+        printf("NNUE disabled\n");
+        return;
+    }
+
+    if (strcmp(arg, "on") == 0) {
+        if (!nnue_is_loaded()) {
+            printf("NNUE not loaded\n");
+            return;
+        }
+        nnue_set_enabled(1);
+        nnue_refresh();
+        printf("NNUE enabled\n");
+        return;
+    }
+
+    if (strcmp(arg, "unload") == 0) {
+        nnue_unload();
+        printf("NNUE unloaded\n");
+        return;
+    }
+
+    if (strncmp(arg, "load ", 5) == 0) {
+        if (nnue_load(arg + 5))
+            printf("NNUE loaded: %s\n", arg + 5);
+        else
+            printf("Error (failed to load NNUE): %s\n", arg + 5);
+        return;
+    }
+
+    printf("Error (unknown nnue command): %s\n", arg);
 }
 
 static void cmd_book(const char *arg) {
@@ -347,6 +392,7 @@ static void cmd_help(void) {
     printf("perfttest                   Runs the perft test suite\n");
     printf("searchtest                  Runs the search test suite\n");
     printf("cachestat                   Prints cache statistics\n");
+    printf("nnue [status|on|off|load]   Controls NNUE evaluation\n");
     printf("exit                        Exits the engine\n");
     printf("quit                        See exit\n");
     printf("help                        Gets you this magical menu\n\n");
@@ -409,6 +455,7 @@ void xboard_run(void) {
     board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     generate_PST();
     cmd_memory("100");  /* default 100MB */
+    nnue_load("nets/default.nnue");
     update_time_per_move();
 
     while (fgets(command, sizeof(command), stdin) != NULL) {
@@ -458,6 +505,7 @@ void xboard_run(void) {
                  strcmp(verb, "eval") == 0)        { cmd_evaluate(); }
         else if (strcmp(verb, "book") == 0)        { cmd_book(arg); }
         else if (strcmp(verb, "cachestat") == 0)   { cmd_cachestat(); }
+        else if (strcmp(verb, "nnue") == 0)        { cmd_nnue(arg); }
         else if (strcmp(verb, "version") == 0)     { cmd_version(); }
         else if (strcmp(verb, "sts") == 0)         { cmd_sts(arg); }
         else if (strcmp(verb, "ping") == 0)        { cmd_ping(arg); }

@@ -95,6 +95,7 @@ extern uint64_t pawn_table_size;
 void generate_PST(void);
 void init_eval_tables(int mb);
 
+int hce_evaluation(int display);
 int static_evaluation(int display);
 
 #endif

@@ -38,6 +38,8 @@ void board_new() {
 		piece_list_new(&w_pieces_by_type[i]);
 		piece_list_new(&b_pieces_by_type[i]);
 	}
+
+    nnue_reset_state();
 }
 
 void board_set_fen(char* fen) {    
@@ -140,6 +142,7 @@ void board_set_fen(char* fen) {
     }
 
     zobrist = board_gen_zobrist();
+    nnue_refresh();
 }
 
 void board_draw() {
@@ -460,16 +463,20 @@ unsigned gen_caps(unsigned* moves) {
 
 /* updates board and board list */
 unsigned board_add(unsigned move) {
-    unsigned from, to;
+    unsigned from, to, moved_piece, previous_piece, previous_ep, captured_piece;
     from = MOVE2FROM(move);
     to = MOVE2TO(move);
+    moved_piece = pieces[from];
+    previous_piece = pieces[to];
     
     history[total_history][0] = move;
-    history[total_history][1] = pieces[to];         /* piece that existed there before,         */
+    history[total_history][1] = previous_piece;     /* piece that existed there before,         */
     history[total_history][2] = enpassant_target;   /* will either be empty or -1 * turn colour */
     history[total_history][3] = castling;
     zobrist_history[total_history] = zobrist;
     ++total_history;
+    previous_ep = history[total_history - 1][2];
+    captured_piece = (move & BITS_ENPASSANT) ? PAWN : previous_piece;
 
     /* REGULAR MOVE */
     if(MOVE2BITS(move) == 0) {
@@ -606,6 +613,8 @@ unsigned board_add(unsigned move) {
         castling -= CASTLE_BK;
         zobrist ^= zobrist_castling[CASTLE_BK];
     }
+
+    nnue_apply_move(move, moved_piece, captured_piece, previous_ep, turn);
     
     turn = -1 * turn;
     zobrist ^= zobrist_side;
@@ -882,6 +891,7 @@ void board_do_null_move(void) {
     }
     turn = -1 * turn;
     zobrist ^= zobrist_side;
+    nnue_push_null();
 }
 
 void board_undo_null_move(void) {

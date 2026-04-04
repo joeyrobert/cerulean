@@ -4,6 +4,7 @@
 #include "piece_list.h"
 #include "zobrist.h"
 #include "hash_table.h"
+#include "nnue.h"
 
 #define NO_ENPASSANT 128 /* important for zobrist */
 #define OFF          137 /* used in reverse list */

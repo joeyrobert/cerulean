@@ -11,6 +11,7 @@
 #include <math.h>
 #include "evaluate.h"
 #include "board.h"
+#include "nnue.h"
 #include "util.h"
 
 /* Piece values: {EMPTY, PAWN, BISHOP, KNIGHT, ROOK, QUEEN, KING} */
@@ -439,7 +440,7 @@ static int compute_pawn_structure(int pawn_rank[2][8], int pawns_by_file[2][8]) 
 /* -----------------------------------------------------------------------
  * Main evaluation
  * ----------------------------------------------------------------------- */
-int static_evaluation(int display) {
+int hce_evaluation(int display) {
     int i, col_idx, row, col;
     unsigned idx, piece;
     double gphase, cgame;
@@ -743,4 +744,11 @@ int static_evaluation(int display) {
         single_add(eval_table, eval_table_size, zobrist, total);
 
     return (turn == WHITE) ? total : -total;
+}
+
+int static_evaluation(int display) {
+    if (!display && nnue_can_evaluate())
+        return nnue_evaluate();
+
+    return hce_evaluation(display);
 }
