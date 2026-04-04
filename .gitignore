@@ -15,3 +15,15 @@ ipch/
 Thumbs.db
 *.sdf
 *.opensdf
+
+# NNUE pipeline intermediates
+data/*.bin
+data/*.bin.progress
+data/*.seed.bin
+data/*.shard*.bin
+data/*.shard*.bin.progress
+
+# NNUE outputs: keep final nets trackable, ignore intermediates/results
+nets/*.checkpoint.*
+nets/*.sts-results.txt
+!nets/*.nnue

@@ -17,6 +17,32 @@
 
 #define STS_SUITES 10
 #define STS_MAX_LINE 512
+#define STS_TOTAL_POSITIONS 1000
+
+static void sts_format_duration_ms(long ms, char *buf, size_t buf_size) {
+    long total_seconds;
+    long hours, minutes, seconds;
+
+    if (ms < 0) ms = 0;
+    total_seconds = ms / 1000;
+    hours = total_seconds / 3600;
+    minutes = (total_seconds % 3600) / 60;
+    seconds = total_seconds % 60;
+
+    if (hours > 0)
+        snprintf(buf, buf_size, "%ldh%02ldm%02lds", hours, minutes, seconds);
+    else if (minutes > 0)
+        snprintf(buf, buf_size, "%ldm%02lds", minutes, seconds);
+    else
+        snprintf(buf, buf_size, "%lds", seconds);
+}
+
+static long sts_estimate_remaining_ms(long elapsed_ms, int done, int total) {
+    if (elapsed_ms <= 0 || done <= 0 || total <= done)
+        return 0;
+
+    return (long)((double)elapsed_ms * (double)(total - done) / (double)done);
+}
 
 /* Parse c0 field for points of a given move string.
  * c0 format: "Nf3=10, e4=5, ..."
@@ -56,6 +82,7 @@ int sts_run(int time_ms) {
     if (time_ms <= 0) time_ms = 1000;
 
     printf("Running Strategic Test Suite (time: %dms per position)\n\n", time_ms);
+    fflush(stdout);
 
     long wall_start = get_time_ms();
 
@@ -128,18 +155,43 @@ int sts_run(int time_ms) {
             total_points += pts;
             total_positions++;
 
-            printf("%s\n", id_str);
-            printf("%d/%d: %s\n", total_positions, STS_SUITES * 100, fen);
-            printf("Move: %s  Points Added: %d  Total Points: %d\n\n",
-                   best_str, pts, total_points);
+            {
+                long elapsed_ms = get_time_ms() - wall_start;
+                long remaining_ms = sts_estimate_remaining_ms(elapsed_ms, total_positions, STS_TOTAL_POSITIONS);
+                double pos_per_second = (elapsed_ms > 0)
+                    ? ((double)total_positions * 1000.0 / (double)elapsed_ms) : 0.0;
+                char elapsed_buf[32];
+                char eta_buf[32];
+
+                sts_format_duration_ms(elapsed_ms, elapsed_buf, sizeof(elapsed_buf));
+                sts_format_duration_ms(remaining_ms, eta_buf, sizeof(eta_buf));
+                printf("[sts] %d/%d - suite %d - %s - move %s - +%d points (total %d) - %.2f pos/s - elapsed %s - ETA %s\n",
+                       total_positions, STS_TOTAL_POSITIONS, suite, id_str[0] ? id_str : "(no id)",
+                       best_str, pts, total_points, pos_per_second, elapsed_buf, eta_buf);
+                fflush(stdout);
+            }
         }
 
         fclose(f);
+
+        {
+            long elapsed_ms = get_time_ms() - wall_start;
+            long remaining_ms = sts_estimate_remaining_ms(elapsed_ms, total_positions, STS_TOTAL_POSITIONS);
+            char elapsed_buf[32];
+            char eta_buf[32];
+
+            sts_format_duration_ms(elapsed_ms, elapsed_buf, sizeof(elapsed_buf));
+            sts_format_duration_ms(remaining_ms, eta_buf, sizeof(eta_buf));
+            printf("[sts] Suite %d complete - %d/%d positions - total points %d - elapsed %s - ETA %s\n",
+                   suite, total_positions, STS_TOTAL_POSITIONS, total_points, elapsed_buf, eta_buf);
+            fflush(stdout);
+        }
     }
 
     double duration = (get_time_ms() - wall_start) / 1000.0;
     printf("STS Total Points: %d / %d\n", total_points, STS_SUITES * 100 * 10);
     printf("Duration: %.3fs\n", duration);
+    fflush(stdout);
 
     return total_points;
 }

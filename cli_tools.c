@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <time.h>
 #include <errno.h>
+#ifndef _WIN32
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 #include "cli_tools.h"
 #include "board.h"
 #include "evaluate.h"
@@ -36,6 +41,113 @@ typedef struct {
     long positions_written;
     long bytes_written;
 } datagen_progress;
+
+typedef struct {
+    int worker_id;
+    int assigned_games;
+    char shard_path[1024];
+    char progress_path[1060];
+#ifndef _WIN32
+    pid_t pid;
+#endif
+    int completed;
+} datagen_worker;
+
+static void format_duration_ms(long ms, char *buf, size_t buf_size) {
+    long total_seconds;
+    long hours, minutes, seconds;
+
+    if (ms < 0)
+        ms = 0;
+
+    total_seconds = ms / 1000;
+    hours = total_seconds / 3600;
+    minutes = (total_seconds % 3600) / 60;
+    seconds = total_seconds % 60;
+
+    if (hours > 0)
+        snprintf(buf, buf_size, "%ldh%02ldm%02lds", hours, minutes, seconds);
+    else if (minutes > 0)
+        snprintf(buf, buf_size, "%ldm%02lds", minutes, seconds);
+    else
+        snprintf(buf, buf_size, "%lds", seconds);
+}
+
+static long estimate_remaining_ms(long elapsed_ms, long done, long total) {
+    if (elapsed_ms <= 0 || done <= 0 || total <= done)
+        return 0;
+
+    return (long)((double)elapsed_ms * (double)(total - done) / (double)done);
+}
+
+static void print_seed_progress(long done, long total, long elapsed_ms) {
+    double pct = (total > 0) ? (100.0 * (double)done / (double)total) : 0.0;
+    double per_second = (elapsed_ms > 0) ? ((double)done * 1000.0 / (double)elapsed_ms) : 0.0;
+    long remaining_ms = estimate_remaining_ms(elapsed_ms, done, total);
+    char elapsed_buf[32];
+    char eta_buf[32];
+
+    format_duration_ms(elapsed_ms, elapsed_buf, sizeof(elapsed_buf));
+    format_duration_ms(remaining_ms, eta_buf, sizeof(eta_buf));
+    printf("[datagen] Seed labeling %ld/%ld (%.1f%%) - %.1f pos/s - elapsed %s - ETA %s\n",
+           done, total, pct, per_second, elapsed_buf, eta_buf);
+    fflush(stdout);
+}
+
+static void print_parallel_selfplay_progress(long done_games, long total_games, long total_positions,
+                                             long elapsed_ms, int active_workers) {
+    double pct = (total_games > 0) ? (100.0 * (double)done_games / (double)total_games) : 0.0;
+    double games_per_min = (elapsed_ms > 0) ? ((double)done_games * 60000.0 / (double)elapsed_ms) : 0.0;
+    double positions_per_second = (elapsed_ms > 0)
+        ? ((double)total_positions * 1000.0 / (double)elapsed_ms) : 0.0;
+    long remaining_ms = estimate_remaining_ms(elapsed_ms, done_games, total_games);
+    char elapsed_buf[32];
+    char eta_buf[32];
+
+    format_duration_ms(elapsed_ms, elapsed_buf, sizeof(elapsed_buf));
+    format_duration_ms(remaining_ms, eta_buf, sizeof(eta_buf));
+    printf("[datagen] Self-play %ld/%ld games (%.1f%%) - %ld positions - %.2f games/min - %.1f pos/s - active workers %d - elapsed %s - ETA %s\n",
+           done_games, total_games, pct, total_positions, games_per_min, positions_per_second,
+           active_workers, elapsed_buf, eta_buf);
+    fflush(stdout);
+}
+
+static void print_game_heartbeat(int game_number, int total_games, int ply, int sampled_positions,
+                                 long elapsed_ms, long total_positions, long selfplay_elapsed_ms) {
+    double positions_per_second = (selfplay_elapsed_ms > 0)
+        ? ((double)total_positions * 1000.0 / (double)selfplay_elapsed_ms) : 0.0;
+    char elapsed_buf[32];
+
+    format_duration_ms(elapsed_ms, elapsed_buf, sizeof(elapsed_buf));
+    printf("[datagen]   game %d/%d still running - ply %d - sampled %d positions - elapsed %s - self-play %.1f pos/s\n",
+           game_number, total_games, ply, sampled_positions, elapsed_buf, positions_per_second);
+    fflush(stdout);
+}
+
+static int datagen_default_workers(void) {
+#ifdef _WIN32
+    return 1;
+#else
+    long cpus = sysconf(_SC_NPROCESSORS_ONLN);
+    if (cpus < 1)
+        return 1;
+    if (cpus > 8)
+        cpus = 8;
+    return (int)cpus;
+#endif
+}
+
+static void datagen_seed_path(char *buf, size_t buf_size, const char *output) {
+    snprintf(buf, buf_size, "%s.seed.bin", output);
+}
+
+static void datagen_shard_path(char *buf, size_t buf_size, const char *output, int worker_id) {
+    snprintf(buf, buf_size, "%s.shard%02d.bin", output, worker_id);
+}
+
+static void datagen_progress_path(char *buf, size_t buf_size, const char *data_path) {
+    snprintf(buf, buf_size, "%s.progress", data_path);
+}
 
 static void init_engine_state(void) {
     static int initialized = 0;
@@ -121,7 +233,8 @@ static int parse_fen_prefix(const char *line, char *fen, size_t fen_size) {
     return 1;
 }
 
-static long append_seed_file(FILE *out, const char *path, int depth, long *positions_written) {
+static long append_seed_file(FILE *out, const char *path, int depth, long *positions_written,
+                             long *seed_done, long seed_total, long seed_start_ms) {
     FILE *fp;
     char line[2048];
     long count = 0;
@@ -144,6 +257,10 @@ static long append_seed_file(FILE *out, const char *path, int depth, long *posit
         fwrite(&entry, sizeof(entry), 1, out);
         count++;
         (*positions_written)++;
+        (*seed_done)++;
+
+        if ((*seed_done % 100) == 0 || *seed_done == seed_total)
+            print_seed_progress(*seed_done, seed_total, get_time_ms() - seed_start_ms);
     }
 
     fclose(fp);
@@ -223,50 +340,118 @@ static void load_progress(const char *path, datagen_progress *progress) {
     fclose(fp);
 }
 
-static int run_datagen(int argc, char **argv) {
-    const char *output = "data/gen.bin";
-    char progress_path[1024];
-    const char *seed_files[] = {
-        "suites/perftsuite.epd",
-        "suites/arasan12.epd",
-        "suites/bt2630.epd",
-        "suites/ecmgcp.epd",
-        "suites/eet.epd",
-        "suites/lapuce2.epd",
-        "suites/pet.epd",
-        "suites/sbd.epd",
-        "suites/wac.epd",
-        "suites/epd/STS1.epd",
-        "suites/epd/STS2.epd",
-        "suites/epd/STS3.epd",
-        "suites/epd/STS4.epd",
-        "suites/epd/STS5.epd",
-        "suites/epd/STS6.epd",
-        "suites/epd/STS7.epd",
-        "suites/epd/STS8.epd",
-        "suites/epd/STS9.epd",
-        "suites/epd/STS10.epd",
-        "suites/epd/STS11.epd",
-        "suites/epd/STS12.epd",
-        "suites/epd/STS13.epd"
-    };
-    FILE *out;
-    int games = 1000;
-    int i;
-    datagen_progress progress;
-    long seed_positions = 0;
+static long file_size_or_zero(const char *path) {
+    FILE *fp = fopen(path, "rb");
+    long size;
 
-    for (i = 2; i < argc; i++) {
-        if (strcmp(argv[i], "--games") == 0 && i + 1 < argc)
-            games = atoi(argv[++i]);
-        else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc)
-            output = argv[++i];
+    if (!fp)
+        return 0;
+
+    if (fseek(fp, 0, SEEK_END) != 0) {
+        fclose(fp);
+        return 0;
     }
 
-    init_engine_state();
-    srand((unsigned)time(NULL));
+    size = ftell(fp);
+    fclose(fp);
+    return (size < 0) ? 0 : size;
+}
 
-    snprintf(progress_path, sizeof(progress_path), "%s.progress", output);
+static int copy_file_into(FILE *out, const char *path) {
+    FILE *in = fopen(path, "rb");
+    char buffer[1 << 15];
+    size_t nread;
+
+    if (!in)
+        return 0;
+
+    while ((nread = fread(buffer, 1, sizeof(buffer), in)) > 0) {
+        if (fwrite(buffer, 1, nread, out) != nread) {
+            fclose(in);
+            return 0;
+        }
+    }
+
+    fclose(in);
+    return 1;
+}
+
+static int merge_datagen_outputs(const char *output, const char *seed_path,
+                                 datagen_worker *workers, int worker_count) {
+    FILE *out = fopen(output, "wb");
+    int i;
+
+    if (!out)
+        return 0;
+
+    if (!copy_file_into(out, seed_path)) {
+        fclose(out);
+        return 0;
+    }
+
+    for (i = 0; i < worker_count; i++) {
+        if (!copy_file_into(out, workers[i].shard_path)) {
+            fclose(out);
+            return 0;
+        }
+    }
+
+    fclose(out);
+    return 1;
+}
+
+static int ensure_seed_file(const char *seed_path, const char **seed_files, int seed_file_count,
+                            long seed_total) {
+    FILE *out;
+    datagen_progress progress;
+    long seed_positions = 0;
+    long seed_done = 0;
+    long seed_start_ms;
+    int i;
+
+    if (file_size_or_zero(seed_path) == (long)(seed_total * (long)sizeof(training_entry))) {
+        printf("[datagen] Seed file ready: %s (%ld positions)\n", seed_path, seed_total);
+        fflush(stdout);
+        return 1;
+    }
+
+    memset(&progress, 0, sizeof(progress));
+    out = fopen(seed_path, "wb");
+    if (!out) {
+        fprintf(stderr, "failed to open %s: %s\n", seed_path, strerror(errno));
+        return 0;
+    }
+
+    printf("[datagen] Labeling seed positions at depth 7...\n");
+    fflush(stdout);
+    seed_start_ms = get_time_ms();
+    for (i = 0; i < seed_file_count; i++) {
+        seed_positions += append_seed_file(out, seed_files[i], 7, &progress.positions_written,
+                                           &seed_done, seed_total, seed_start_ms);
+    }
+    fclose(out);
+
+    printf("[datagen] Seed labeling complete: %ld positions in ", seed_positions);
+    {
+        char elapsed_buf[32];
+        format_duration_ms(get_time_ms() - seed_start_ms, elapsed_buf, sizeof(elapsed_buf));
+        printf("%s\n", elapsed_buf);
+    }
+    fflush(stdout);
+    return 1;
+}
+
+static int run_datagen_worker(const char *output, int games, unsigned seed,
+                              int worker_id, int verbose_heartbeat) {
+    char progress_path[1060];
+    FILE *out;
+    datagen_progress progress;
+    int i;
+    long selfplay_start_ms;
+    long selfplay_start_positions;
+
+    datagen_progress_path(progress_path, sizeof(progress_path), output);
+    (void)worker_id;
     load_progress(progress_path, &progress);
 
     out = fopen(output, progress.bytes_written > 0 ? "ab" : "wb");
@@ -275,18 +460,11 @@ static int run_datagen(int argc, char **argv) {
         return 1;
     }
 
-    if (progress.bytes_written == 0) {
-        printf("[datagen] Labeling seed positions at depth 7...\n");
-        for (i = 0; i < (int)(sizeof(seed_files) / sizeof(seed_files[0])); i++)
-            seed_positions += append_seed_file(out, seed_files[i], 7, &progress.positions_written);
-        progress.bytes_written = progress.positions_written * (long)sizeof(training_entry);
-        save_progress(progress_path, &progress);
-        printf("[datagen] Seed labeling complete: %ld positions\n", seed_positions);
-    } else {
-        printf("[datagen] Resuming from %ld completed games\n", progress.games_completed);
-    }
+    init_engine_state();
+    srand(seed);
+    selfplay_start_ms = get_time_ms();
+    selfplay_start_positions = progress.positions_written;
 
-    printf("[datagen] Starting self-play generation: %d games at depth 6\n", games);
     for (i = (int)progress.games_completed; i < games; i++) {
         training_entry game_entries[256];
         int game_entry_count = 0;
@@ -294,6 +472,8 @@ static int run_datagen(int argc, char **argv) {
         int decisive_streak = 0;
         int result = TRAINING_RESULT_DRAW;
         int ply = 0;
+        long game_start_ms = get_time_ms();
+        long last_heartbeat_ms = game_start_ms;
 
         board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
@@ -309,6 +489,14 @@ static int run_datagen(int argc, char **argv) {
             unsigned move;
             int score;
             int legal;
+            long now_ms = get_time_ms();
+
+            if (verbose_heartbeat && now_ms - last_heartbeat_ms >= 5000) {
+                print_game_heartbeat(i + 1, games, ply, game_entry_count, now_ms - game_start_ms,
+                                     progress.positions_written - selfplay_start_positions,
+                                     now_ms - selfplay_start_ms);
+                last_heartbeat_ms = now_ms;
+            }
 
             legal = legal_move_count();
             if (legal == 0) {
@@ -355,17 +543,227 @@ static int run_datagen(int argc, char **argv) {
 
         progress.games_completed = i + 1;
         progress.bytes_written = progress.positions_written * (long)sizeof(training_entry);
-        if ((i + 1) % 25 == 0 || i + 1 == games) {
+        if ((i + 1) % 10 == 0 || i + 1 == games)
             save_progress(progress_path, &progress);
-            printf("[datagen]   %d/%d games (%.1f%%) - %ld positions written\n",
-                   i + 1, games, 100.0 * (double)(i + 1) / (double)games, progress.positions_written);
-        }
     }
 
     fclose(out);
-    printf("[datagen] Complete: %ld games, %ld positions written to %s\n",
-           progress.games_completed, progress.positions_written, output);
+    save_progress(progress_path, &progress);
     return 0;
+}
+
+#ifndef _WIN32
+static int spawn_datagen_worker(const char *self_path, datagen_worker *worker, unsigned seed) {
+    pid_t pid = fork();
+    char games_arg[32];
+    char seed_arg[32];
+    char worker_arg[32];
+
+    if (pid < 0)
+        return 0;
+
+    if (pid == 0) {
+        snprintf(games_arg, sizeof(games_arg), "%d", worker->assigned_games);
+        snprintf(seed_arg, sizeof(seed_arg), "%u", seed);
+        snprintf(worker_arg, sizeof(worker_arg), "%d", worker->worker_id);
+        execl(self_path, self_path,
+              "--datagen-worker",
+              "--games", games_arg,
+              "--output", worker->shard_path,
+              "--seed", seed_arg,
+              "--worker-id", worker_arg,
+              (char *)NULL);
+        _exit(127);
+    }
+
+    worker->pid = pid;
+    return 1;
+}
+#endif
+
+static int run_datagen_parent(const char *self_path, const char *output, int games, int workers_requested) {
+    const char *seed_files[] = {
+        "suites/perftsuite.epd",
+        "suites/arasan12.epd",
+        "suites/bt2630.epd",
+        "suites/ecmgcp.epd",
+        "suites/eet.epd",
+        "suites/lapuce2.epd",
+        "suites/pet.epd",
+        "suites/sbd.epd",
+        "suites/wac.epd",
+        "suites/epd/STS1.epd",
+        "suites/epd/STS2.epd",
+        "suites/epd/STS3.epd",
+        "suites/epd/STS4.epd",
+        "suites/epd/STS5.epd",
+        "suites/epd/STS6.epd",
+        "suites/epd/STS7.epd",
+        "suites/epd/STS8.epd",
+        "suites/epd/STS9.epd",
+        "suites/epd/STS10.epd",
+        "suites/epd/STS11.epd",
+        "suites/epd/STS12.epd",
+        "suites/epd/STS13.epd"
+    };
+    char seed_path[1024];
+    int worker_count;
+    datagen_worker *workers;
+    int i;
+    int base_games;
+    int extra_games;
+    int active_workers;
+    long selfplay_start_ms;
+    long last_report_ms;
+    long previous_done = -1;
+    long previous_positions = -1;
+    long seed_total = 2463;
+
+    worker_count = (workers_requested > 0) ? workers_requested : datagen_default_workers();
+    if (worker_count < 1)
+        worker_count = 1;
+    if (worker_count > games && games > 0)
+        worker_count = games;
+    if (worker_count < 1)
+        worker_count = 1;
+
+    datagen_seed_path(seed_path, sizeof(seed_path), output);
+    init_engine_state();
+    if (!ensure_seed_file(seed_path, seed_files, (int)(sizeof(seed_files) / sizeof(seed_files[0])), seed_total))
+        return 1;
+
+    workers = (datagen_worker *)calloc((size_t)worker_count, sizeof(datagen_worker));
+    if (!workers)
+        return 1;
+
+    base_games = (worker_count > 0) ? (games / worker_count) : games;
+    extra_games = (worker_count > 0) ? (games % worker_count) : 0;
+    active_workers = 0;
+
+    for (i = 0; i < worker_count; i++) {
+        datagen_progress shard_progress;
+        workers[i].worker_id = i + 1;
+        workers[i].assigned_games = base_games + (i < extra_games ? 1 : 0);
+        datagen_shard_path(workers[i].shard_path, sizeof(workers[i].shard_path), output, workers[i].worker_id);
+        datagen_progress_path(workers[i].progress_path, sizeof(workers[i].progress_path), workers[i].shard_path);
+        load_progress(workers[i].progress_path, &shard_progress);
+        if (shard_progress.games_completed >= workers[i].assigned_games)
+            workers[i].completed = 1;
+    }
+
+    printf("[datagen] Starting self-play generation: %d games at depth 6 with %d worker(s)\n",
+           games, worker_count);
+    fflush(stdout);
+
+#ifdef _WIN32
+    if (worker_count > 1)
+        printf("[datagen] Parallel workers are not enabled on this build; falling back to 1 worker\n");
+    free(workers);
+    return run_datagen_worker(output, games, (unsigned)time(NULL), 1, 1);
+#else
+    for (i = 0; i < worker_count; i++) {
+        if (workers[i].completed || workers[i].assigned_games <= 0)
+            continue;
+        if (!spawn_datagen_worker(self_path, &workers[i], (unsigned)time(NULL) ^ (unsigned)(i * 2654435761u))) {
+            fprintf(stderr, "failed to spawn datagen worker %d\n", i + 1);
+            free(workers);
+            return 1;
+        }
+        active_workers++;
+    }
+
+    selfplay_start_ms = get_time_ms();
+    last_report_ms = 0;
+    while (active_workers > 0) {
+        long done_games = 0;
+        long done_positions = 0;
+        long now_ms = get_time_ms();
+
+        for (i = 0; i < worker_count; i++) {
+            datagen_progress shard_progress;
+            load_progress(workers[i].progress_path, &shard_progress);
+            if (shard_progress.games_completed > workers[i].assigned_games)
+                shard_progress.games_completed = workers[i].assigned_games;
+            done_games += shard_progress.games_completed;
+            done_positions += shard_progress.positions_written;
+        }
+
+        if (now_ms - last_report_ms >= 2000 ||
+            done_games != previous_done || done_positions != previous_positions) {
+            int live_workers = 0;
+            for (i = 0; i < worker_count; i++) {
+                if (!workers[i].completed && workers[i].assigned_games > 0)
+                    live_workers++;
+            }
+            print_parallel_selfplay_progress(done_games, games, done_positions,
+                                             now_ms - selfplay_start_ms, live_workers);
+            previous_done = done_games;
+            previous_positions = done_positions;
+            last_report_ms = now_ms;
+        }
+
+        for (i = 0; i < worker_count; i++) {
+            int status;
+            pid_t result;
+
+            if (workers[i].completed || workers[i].assigned_games <= 0)
+                continue;
+
+            result = waitpid(workers[i].pid, &status, WNOHANG);
+            if (result == workers[i].pid) {
+                workers[i].completed = 1;
+                active_workers--;
+                if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+                    fprintf(stderr, "datagen worker %d failed\n", workers[i].worker_id);
+                    free(workers);
+                    return 1;
+                }
+            }
+        }
+
+        usleep(250000);
+    }
+
+    if (!merge_datagen_outputs(output, seed_path, workers, worker_count)) {
+        fprintf(stderr, "failed to merge datagen outputs into %s\n", output);
+        free(workers);
+        return 1;
+    }
+
+    {
+        long total_positions = seed_total;
+        for (i = 0; i < worker_count; i++) {
+            datagen_progress shard_progress;
+            load_progress(workers[i].progress_path, &shard_progress);
+            total_positions += shard_progress.positions_written;
+        }
+        printf("[datagen] Complete: %d games, %ld positions written to %s\n",
+               games, total_positions, output);
+        fflush(stdout);
+    }
+
+    free(workers);
+    return 0;
+#endif
+}
+
+static int run_datagen(int argc, char **argv) {
+    const char *output = "data/gen.bin";
+    const char *self_path = argv[0];
+    int games = 1000;
+    int workers = 0;
+    int i;
+
+    for (i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "--games") == 0 && i + 1 < argc)
+            games = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc)
+            output = argv[++i];
+        else if (strcmp(argv[i], "--workers") == 0 && i + 1 < argc)
+            workers = atoi(argv[++i]);
+    }
+
+    return run_datagen_parent(self_path, output, games, workers);
 }
 
 static int solve_linear_system(double a[6][7], double x[6]) {
@@ -514,6 +912,9 @@ static int run_train(int argc, char **argv) {
     double xtx[6][7];
     double solution[6] = {0};
     long count = 0;
+    long data_size = 0;
+    long read_start_ms = 0;
+    long write_start_ms = 0;
     int i, j;
 
     for (i = 2; i < argc; i++) {
@@ -530,6 +931,21 @@ static int run_train(int argc, char **argv) {
         return 1;
     }
 
+    if (fseek(fp, 0, SEEK_END) == 0) {
+        data_size = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+    }
+
+    printf("[train] Loading training data: %s", data);
+    if (data_size > 0)
+        printf(" (%ld positions, %.1f MB)\n", data_size / (long)sizeof(training_entry),
+               (double)data_size / (1024.0 * 1024.0));
+    else
+        printf("\n");
+    printf("[train] Network: 40960 -> 128 -> 32 -> 1 (bootstrap material fit)\n");
+    fflush(stdout);
+    read_start_ms = get_time_ms();
+
     while (fread(&entry, sizeof(entry), 1, fp) == 1) {
         double feats[6];
         accumulate_material_features(&entry, feats);
@@ -539,8 +955,42 @@ static int run_train(int argc, char **argv) {
             xtx[i][6] += feats[i] * entry.score;
         }
         count++;
+
+        if (count % 100000 == 0) {
+            long elapsed_ms = get_time_ms() - read_start_ms;
+            long total_positions = (data_size > 0) ? (data_size / (long)sizeof(training_entry)) : 0;
+            double pos_per_second = (elapsed_ms > 0)
+                ? ((double)count * 1000.0 / (double)elapsed_ms) : 0.0;
+            long remaining_ms = estimate_remaining_ms(elapsed_ms, count, total_positions);
+            char elapsed_buf[32];
+            char eta_buf[32];
+
+            format_duration_ms(elapsed_ms, elapsed_buf, sizeof(elapsed_buf));
+            format_duration_ms(remaining_ms, eta_buf, sizeof(eta_buf));
+            if (total_positions > 0) {
+                printf("[train] Read %ld/%ld positions (%.1f%%) - %.1f pos/s - elapsed %s - ETA %s\n",
+                       count, total_positions, 100.0 * (double)count / (double)total_positions,
+                       pos_per_second, elapsed_buf, eta_buf);
+            } else {
+                printf("[train] Read %ld positions - %.1f pos/s - elapsed %s\n",
+                       count, pos_per_second, elapsed_buf);
+            }
+            fflush(stdout);
+        }
     }
     fclose(fp);
+
+    {
+        long elapsed_ms = get_time_ms() - read_start_ms;
+        double pos_per_second = (elapsed_ms > 0)
+            ? ((double)count * 1000.0 / (double)elapsed_ms) : 0.0;
+        char elapsed_buf[32];
+
+        format_duration_ms(elapsed_ms, elapsed_buf, sizeof(elapsed_buf));
+        printf("[train] Data scan complete: %ld positions - %.1f pos/s - elapsed %s\n",
+               count, pos_per_second, elapsed_buf);
+        fflush(stdout);
+    }
 
     if (!count) {
         fprintf(stderr, "no training rows found in %s\n", data);
@@ -555,15 +1005,25 @@ static int run_train(int argc, char **argv) {
         return 1;
     }
 
+    printf("[train] Solved bootstrap regression, writing net...\n");
+    fflush(stdout);
+    write_start_ms = get_time_ms();
     if (!write_material_bootstrap_net(net, solution)) {
         fprintf(stderr, "failed to write %s\n", net);
         return 1;
     }
 
-    printf("[train] Loaded %ld positions from %s\n", count, data);
     printf("[train] Bootstrap material weights: bias=%.1f pawn=%.1f knight=%.1f bishop=%.1f rook=%.1f queen=%.1f\n",
            solution[0], solution[1], solution[2], solution[3], solution[4], solution[5]);
-    printf("[train] Wrote %s\n", net);
+    {
+        char write_elapsed_buf[32];
+        char total_elapsed_buf[32];
+        format_duration_ms(get_time_ms() - write_start_ms, write_elapsed_buf, sizeof(write_elapsed_buf));
+        format_duration_ms(get_time_ms() - read_start_ms, total_elapsed_buf, sizeof(total_elapsed_buf));
+        printf("[train] Wrote %s in %s\n", net, write_elapsed_buf);
+        printf("[train] Training complete - elapsed %s\n", total_elapsed_buf);
+    }
+    fflush(stdout);
     return 0;
 }
 
@@ -586,14 +1046,44 @@ static int run_sts_eval(int argc, char **argv) {
     max_depth = 64;
     printf("[sts-eval] Loading net: %s\n", net);
     printf("[sts-eval] Running STS at 100ms/move\n");
+    fflush(stdout);
     printf("[sts-eval] Total: %d\n", sts_run(100));
+    fflush(stdout);
     return 0;
+}
+
+static int run_datagen_worker_cli(int argc, char **argv) {
+    const char *output = NULL;
+    int games = 0;
+    int worker_id = 0;
+    unsigned seed = (unsigned)time(NULL);
+    int i;
+
+    for (i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "--games") == 0 && i + 1 < argc)
+            games = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc)
+            output = argv[++i];
+        else if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc)
+            seed = (unsigned)strtoul(argv[++i], NULL, 10);
+        else if (strcmp(argv[i], "--worker-id") == 0 && i + 1 < argc)
+            worker_id = atoi(argv[++i]);
+    }
+
+    if (!output || games < 0) {
+        fprintf(stderr, "invalid datagen worker arguments\n");
+        return 1;
+    }
+
+    return run_datagen_worker(output, games, seed ^ (unsigned)(worker_id * 2246822519u), worker_id, 0);
 }
 
 int cli_run(int argc, char **argv) {
     if (argc < 2)
         return -1;
 
+    if (strcmp(argv[1], "--datagen-worker") == 0)
+        return run_datagen_worker_cli(argc, argv);
     if (strcmp(argv[1], "--datagen") == 0)
         return run_datagen(argc, argv);
     if (strcmp(argv[1], "--train") == 0)
