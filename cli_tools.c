@@ -442,7 +442,8 @@ static int ensure_seed_file(const char *seed_path, const char **seed_files, int 
 }
 
 static int run_datagen_worker(const char *output, int games, unsigned seed,
-                              int worker_id, int verbose_heartbeat) {
+                              int worker_id, int verbose_heartbeat,
+                              const char *selfplay_net) {
     char progress_path[1060];
     FILE *out;
     datagen_progress progress;
@@ -461,6 +462,14 @@ static int run_datagen_worker(const char *output, int games, unsigned seed,
     }
 
     init_engine_state();
+    if (selfplay_net && selfplay_net[0]) {
+        board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        if (!nnue_load(selfplay_net)) {
+            fprintf(stderr, "failed to load self-play net %s\n", selfplay_net);
+            fclose(out);
+            return 1;
+        }
+    }
     srand(seed);
     selfplay_start_ms = get_time_ms();
     selfplay_start_positions = progress.positions_written;
@@ -553,7 +562,8 @@ static int run_datagen_worker(const char *output, int games, unsigned seed,
 }
 
 #ifndef _WIN32
-static int spawn_datagen_worker(const char *self_path, datagen_worker *worker, unsigned seed) {
+static int spawn_datagen_worker(const char *self_path, datagen_worker *worker, unsigned seed,
+                                const char *selfplay_net) {
     pid_t pid = fork();
     char games_arg[32];
     char seed_arg[32];
@@ -566,13 +576,24 @@ static int spawn_datagen_worker(const char *self_path, datagen_worker *worker, u
         snprintf(games_arg, sizeof(games_arg), "%d", worker->assigned_games);
         snprintf(seed_arg, sizeof(seed_arg), "%u", seed);
         snprintf(worker_arg, sizeof(worker_arg), "%d", worker->worker_id);
-        execl(self_path, self_path,
-              "--datagen-worker",
-              "--games", games_arg,
-              "--output", worker->shard_path,
-              "--seed", seed_arg,
-              "--worker-id", worker_arg,
-              (char *)NULL);
+        if (selfplay_net && selfplay_net[0]) {
+            execl(self_path, self_path,
+                  "--datagen-worker",
+                  "--games", games_arg,
+                  "--output", worker->shard_path,
+                  "--seed", seed_arg,
+                  "--worker-id", worker_arg,
+                  "--selfplay-net", selfplay_net,
+                  (char *)NULL);
+        } else {
+            execl(self_path, self_path,
+                  "--datagen-worker",
+                  "--games", games_arg,
+                  "--output", worker->shard_path,
+                  "--seed", seed_arg,
+                  "--worker-id", worker_arg,
+                  (char *)NULL);
+        }
         _exit(127);
     }
 
@@ -581,7 +602,8 @@ static int spawn_datagen_worker(const char *self_path, datagen_worker *worker, u
 }
 #endif
 
-static int run_datagen_parent(const char *self_path, const char *output, int games, int workers_requested) {
+static int run_datagen_parent(const char *self_path, const char *output, int games,
+                              int workers_requested, const char *selfplay_net) {
     const char *seed_files[] = {
         "suites/perftsuite.epd",
         "suites/arasan12.epd",
@@ -651,20 +673,26 @@ static int run_datagen_parent(const char *self_path, const char *output, int gam
             workers[i].completed = 1;
     }
 
-    printf("[datagen] Starting self-play generation: %d games at depth 6 with %d worker(s)\n",
-           games, worker_count);
+    if (selfplay_net && selfplay_net[0])
+        printf("[datagen] Starting self-play generation: %d games at depth 6 with %d worker(s) using %s\n",
+               games, worker_count, selfplay_net);
+    else
+        printf("[datagen] Starting self-play generation: %d games at depth 6 with %d worker(s)\n",
+               games, worker_count);
     fflush(stdout);
 
 #ifdef _WIN32
     if (worker_count > 1)
         printf("[datagen] Parallel workers are not enabled on this build; falling back to 1 worker\n");
     free(workers);
-    return run_datagen_worker(output, games, (unsigned)time(NULL), 1, 1);
+        return run_datagen_worker(output, games, (unsigned)time(NULL), 1, 1, selfplay_net);
 #else
     for (i = 0; i < worker_count; i++) {
         if (workers[i].completed || workers[i].assigned_games <= 0)
             continue;
-        if (!spawn_datagen_worker(self_path, &workers[i], (unsigned)time(NULL) ^ (unsigned)(i * 2654435761u))) {
+        if (!spawn_datagen_worker(self_path, &workers[i],
+                                  (unsigned)time(NULL) ^ (unsigned)(i * 2654435761u),
+                                  selfplay_net)) {
             fprintf(stderr, "failed to spawn datagen worker %d\n", i + 1);
             free(workers);
             return 1;
@@ -750,6 +778,7 @@ static int run_datagen_parent(const char *self_path, const char *output, int gam
 static int run_datagen(int argc, char **argv) {
     const char *output = "data/gen.bin";
     const char *self_path = argv[0];
+    const char *selfplay_net = NULL;
     int games = 1000;
     int workers = 0;
     int i;
@@ -761,9 +790,11 @@ static int run_datagen(int argc, char **argv) {
             output = argv[++i];
         else if (strcmp(argv[i], "--workers") == 0 && i + 1 < argc)
             workers = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--selfplay-net") == 0 && i + 1 < argc)
+            selfplay_net = argv[++i];
     }
 
-    return run_datagen_parent(self_path, output, games, workers);
+    return run_datagen_parent(self_path, output, games, workers, selfplay_net);
 }
 
 static int solve_linear_system(double a[6][7], double x[6]) {
@@ -904,9 +935,7 @@ static int write_material_bootstrap_net(const char *path, const double weights[6
     return 1;
 }
 
-static int run_train(int argc, char **argv) {
-    const char *data = "data/gen.bin";
-    const char *net = "nets/default.nnue";
+static int train_net_from_file(const char *data, const char *net) {
     FILE *fp;
     training_entry entry;
     double xtx[6][7];
@@ -916,13 +945,6 @@ static int run_train(int argc, char **argv) {
     long read_start_ms = 0;
     long write_start_ms = 0;
     int i, j;
-
-    for (i = 2; i < argc; i++) {
-        if (strcmp(argv[i], "--data") == 0 && i + 1 < argc)
-            data = argv[++i];
-        else if (strcmp(argv[i], "--net") == 0 && i + 1 < argc)
-            net = argv[++i];
-    }
 
     memset(xtx, 0, sizeof(xtx));
     fp = fopen(data, "rb");
@@ -1027,6 +1049,41 @@ static int run_train(int argc, char **argv) {
     return 0;
 }
 
+static int run_train(int argc, char **argv) {
+    const char *data = "data/gen.bin";
+    const char *net = "nets/default.nnue";
+    int i;
+
+    for (i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "--data") == 0 && i + 1 < argc)
+            data = argv[++i];
+        else if (strcmp(argv[i], "--net") == 0 && i + 1 < argc)
+            net = argv[++i];
+    }
+
+    return train_net_from_file(data, net);
+}
+
+static int sts_score_net_file(const char *net) {
+    int score;
+
+    init_engine_state();
+    board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    if (!nnue_load(net)) {
+        fprintf(stderr, "failed to load %s\n", net);
+        return -1;
+    }
+
+    max_depth = 64;
+    printf("[sts-eval] Loading net: %s\n", net);
+    printf("[sts-eval] Running STS at 100ms/move\n");
+    fflush(stdout);
+    score = sts_run(100);
+    printf("[sts-eval] Total: %d\n", score);
+    fflush(stdout);
+    return score;
+}
+
 static int run_sts_eval(int argc, char **argv) {
     const char *net = "nets/default.nnue";
     int i;
@@ -1036,24 +1093,12 @@ static int run_sts_eval(int argc, char **argv) {
             net = argv[++i];
     }
 
-    init_engine_state();
-    board_set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    if (!nnue_load(net)) {
-        fprintf(stderr, "failed to load %s\n", net);
-        return 1;
-    }
-
-    max_depth = 64;
-    printf("[sts-eval] Loading net: %s\n", net);
-    printf("[sts-eval] Running STS at 100ms/move\n");
-    fflush(stdout);
-    printf("[sts-eval] Total: %d\n", sts_run(100));
-    fflush(stdout);
-    return 0;
+    return (sts_score_net_file(net) < 0) ? 1 : 0;
 }
 
 static int run_datagen_worker_cli(int argc, char **argv) {
     const char *output = NULL;
+    const char *selfplay_net = NULL;
     int games = 0;
     int worker_id = 0;
     unsigned seed = (unsigned)time(NULL);
@@ -1068,6 +1113,8 @@ static int run_datagen_worker_cli(int argc, char **argv) {
             seed = (unsigned)strtoul(argv[++i], NULL, 10);
         else if (strcmp(argv[i], "--worker-id") == 0 && i + 1 < argc)
             worker_id = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--selfplay-net") == 0 && i + 1 < argc)
+            selfplay_net = argv[++i];
     }
 
     if (!output || games < 0) {
@@ -1075,7 +1122,171 @@ static int run_datagen_worker_cli(int argc, char **argv) {
         return 1;
     }
 
-    return run_datagen_worker(output, games, seed ^ (unsigned)(worker_id * 2246822519u), worker_id, 0);
+    return run_datagen_worker(output, games, seed ^ (unsigned)(worker_id * 2246822519u),
+                              worker_id, 0, selfplay_net);
+}
+
+static int run_nnue_loop(int argc, char **argv) {
+    const char *self_path = argv[0];
+    const char *start_net = "nets/gen1.nnue";
+    const char *data_prefix = "data/gen";
+    const char *net_prefix = "nets/gen";
+    int start_round = 1;
+    int rounds = 3;
+    int games = 20000;
+    int workers = 0;
+    int i;
+    char current_net[1024];
+
+    for (i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "--start-net") == 0 && i + 1 < argc)
+            start_net = argv[++i];
+        else if (strcmp(argv[i], "--start-round") == 0 && i + 1 < argc)
+            start_round = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--rounds") == 0 && i + 1 < argc)
+            rounds = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--games") == 0 && i + 1 < argc)
+            games = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--workers") == 0 && i + 1 < argc)
+            workers = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--data-prefix") == 0 && i + 1 < argc)
+            data_prefix = argv[++i];
+        else if (strcmp(argv[i], "--net-prefix") == 0 && i + 1 < argc)
+            net_prefix = argv[++i];
+    }
+
+    if (rounds < 1)
+        rounds = 1;
+    if (start_round < 1)
+        start_round = 1;
+
+    strncpy(current_net, start_net, sizeof(current_net) - 1);
+    current_net[sizeof(current_net) - 1] = '\0';
+
+    printf("[nnue-loop] Starting from %s (round %d), running %d iteration(s)\n",
+           current_net, start_round, rounds);
+    fflush(stdout);
+
+    for (i = 0; i < rounds; i++) {
+        int next_round = start_round + i + 1;
+        char data_path[1024];
+        char net_path[1024];
+
+        snprintf(data_path, sizeof(data_path), "%s%d.bin", data_prefix, next_round);
+        snprintf(net_path, sizeof(net_path), "%s%d.nnue", net_prefix, next_round);
+
+        printf("[nnue-loop] Round %d: self-play with %s -> %s -> %s\n",
+               next_round, current_net, data_path, net_path);
+        fflush(stdout);
+
+        if (run_datagen_parent(self_path, data_path, games, workers, current_net) != 0)
+            return 1;
+        if (train_net_from_file(data_path, net_path) != 0)
+            return 1;
+        if (sts_score_net_file(net_path) < 0)
+            return 1;
+
+        strncpy(current_net, net_path, sizeof(current_net) - 1);
+        current_net[sizeof(current_net) - 1] = '\0';
+    }
+
+    printf("[nnue-loop] Complete. Latest net: %s\n", current_net);
+    fflush(stdout);
+    return 0;
+}
+
+static int run_nnue_forever(int argc, char **argv) {
+    const char *self_path = argv[0];
+    const char *start_net = "nets/gen1.nnue";
+    const char *data_prefix = "data/gen";
+    const char *net_prefix = "nets/gen";
+    int current_round = 1;
+    int games = 20000;
+    int workers = 0;
+    int min_delta = 5;
+    int patience = 2;
+    int no_improve_rounds = 0;
+    int best_score;
+    int i;
+    char current_net[1024];
+
+    for (i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "--start-net") == 0 && i + 1 < argc)
+            start_net = argv[++i];
+        else if (strcmp(argv[i], "--start-round") == 0 && i + 1 < argc)
+            current_round = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--games") == 0 && i + 1 < argc)
+            games = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--workers") == 0 && i + 1 < argc)
+            workers = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--min-delta") == 0 && i + 1 < argc)
+            min_delta = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--patience") == 0 && i + 1 < argc)
+            patience = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--data-prefix") == 0 && i + 1 < argc)
+            data_prefix = argv[++i];
+        else if (strcmp(argv[i], "--net-prefix") == 0 && i + 1 < argc)
+            net_prefix = argv[++i];
+    }
+
+    if (current_round < 1)
+        current_round = 1;
+
+    strncpy(current_net, start_net, sizeof(current_net) - 1);
+    current_net[sizeof(current_net) - 1] = '\0';
+
+    printf("[nnue-forever] Starting from %s (round %d)\n", current_net, current_round);
+    printf("[nnue-forever] Policy: min_delta=%d, patience=%d\n", min_delta, patience);
+    fflush(stdout);
+
+    best_score = sts_score_net_file(current_net);
+    if (best_score < 0)
+        return 1;
+    printf("[nnue-forever] Baseline STS for %s: %d\n", current_net, best_score);
+    fflush(stdout);
+
+    while (1) {
+        char data_path[1024];
+        char net_path[1024];
+        int next_round = current_round + 1;
+        int score;
+
+        snprintf(data_path, sizeof(data_path), "%s%d.bin", data_prefix, next_round);
+        snprintf(net_path, sizeof(net_path), "%s%d.nnue", net_prefix, next_round);
+
+        printf("[nnue-forever] Round %d: self-play with %s -> %s -> %s\n",
+               next_round, current_net, data_path, net_path);
+        fflush(stdout);
+
+        if (run_datagen_parent(self_path, data_path, games, workers, current_net) != 0)
+            return 1;
+        if (train_net_from_file(data_path, net_path) != 0)
+            return 1;
+        score = sts_score_net_file(net_path);
+        if (score < 0)
+            return 1;
+
+        if (score >= best_score + min_delta) {
+            printf("[nnue-forever] Accepted round %d: STS %d -> %d\n",
+                   next_round, best_score, score);
+            best_score = score;
+            no_improve_rounds = 0;
+        } else {
+            no_improve_rounds++;
+            printf("[nnue-forever] No significant improvement at round %d: score=%d, best=%d, streak=%d/%d\n",
+                   next_round, score, best_score, no_improve_rounds, patience);
+            if (no_improve_rounds >= patience) {
+                printf("[nnue-forever] Stopping: patience exhausted\n");
+                fflush(stdout);
+                return 0;
+            }
+        }
+        fflush(stdout);
+
+        strncpy(current_net, net_path, sizeof(current_net) - 1);
+        current_net[sizeof(current_net) - 1] = '\0';
+        current_round = next_round;
+    }
 }
 
 int cli_run(int argc, char **argv) {
@@ -1086,6 +1297,10 @@ int cli_run(int argc, char **argv) {
         return run_datagen_worker_cli(argc, argv);
     if (strcmp(argv[1], "--datagen") == 0)
         return run_datagen(argc, argv);
+    if (strcmp(argv[1], "--nnue-loop") == 0)
+        return run_nnue_loop(argc, argv);
+    if (strcmp(argv[1], "--nnue-forever") == 0)
+        return run_nnue_forever(argc, argv);
     if (strcmp(argv[1], "--train") == 0)
         return run_train(argc, argv);
     if (strcmp(argv[1], "--sts-eval") == 0)

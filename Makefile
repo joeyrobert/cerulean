@@ -66,6 +66,12 @@ nnue-cycle-full: all
 	./$(TARGET) --train --data $(or $(DATA),data/gen1.bin) --net $(or $(NET),nets/gen1.nnue)
 	./$(TARGET) --sts-eval --net $(or $(NET),nets/gen1.nnue)
 
+nnue-cycle-iter: all
+	./$(TARGET) --nnue-loop --start-net $(or $(START_NET),nets/gen1.nnue) --start-round $(or $(START_ROUND),1) --rounds $(or $(ROUNDS),3) --games $(or $(GAMES),20000) --workers $(or $(WORKERS),0) --data-prefix $(or $(DATA_PREFIX),data/gen) --net-prefix $(or $(NET_PREFIX),nets/gen)
+
+nnue-cycle-forever: all
+	./$(TARGET) --nnue-forever --start-net $(or $(START_NET),nets/gen1.nnue) --start-round $(or $(START_ROUND),1) --games $(or $(GAMES),20000) --workers $(or $(WORKERS),0) --min-delta $(or $(MIN_DELTA),5) --patience $(or $(PATIENCE),2) --data-prefix $(or $(DATA_PREFIX),data/gen) --net-prefix $(or $(NET_PREFIX),nets/gen)
+
 nnue-cycle: nnue-cycle-full
 
-.PHONY: all clean clean-nnue perfttest searchtest sts sts-fast test datagen train sts-eval nnue-cycle nnue-cycle-fast nnue-cycle-full
+.PHONY: all clean clean-nnue perfttest searchtest sts sts-fast test datagen train sts-eval nnue-cycle nnue-cycle-fast nnue-cycle-full nnue-cycle-iter nnue-cycle-forever
